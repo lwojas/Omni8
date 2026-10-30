@@ -3,16 +3,15 @@
 ## Setup
 
 ```bash
-git clone <this repo> Pulse8
-git clone https://github.com/lwojas/webdsp webdsp      # sibling directory
-cd webdsp && npm ci && cd ../Pulse8
+git clone https://github.com/lwojas/Omni8.git
+cd Omni8
 npm install
 npm run dev                                            # http://localhost:5175 (next free port if taken)
 ```
 
-`package.json` depends on `"webdsp": "file:../webdsp"`, so webdsp must be a sibling checkout. Its `prepare` script builds
-it (tsup) during `npm install`, which is why it needs its own `npm ci` first. To depend on a published copy instead,
-change the dependency to `github:lwojas/webdsp`.
+`package.json` depends on `"webdsp": "git+https://github.com/lwojas/webdsp.git"` (its `main`), so `npm install` fetches and builds it
+(its `prepare` script runs tsup); no sibling checkout is needed. Hybrid.8 needs `TriggerParams.envelope` (per-trigger sample envelope), which
+is in webdsp `main`. To work on webdsp alongside, point the dependency at `file:../webdsp` locally and do not commit that.
 
 Node 22 is what CI uses.
 
@@ -34,7 +33,7 @@ TypeScript is `strict` with `noUnusedLocals` and `noUnusedParameters`; the build
 
 `vite.config.ts` excludes `webdsp`, `webdsp/worklet-url` and `webdsp/sequencing` from dependency pre-bundling. webdsp
 resolves its AudioWorklet module with `new URL('./engine-processor.js', import.meta.url)`, and pre-bundling would move
-the module and break that lookup. `server.fs.allow: [".."]` lets the dev server read the linked sibling.
+the module and break that lookup. `server.fs.allow: [".."]` lets the dev server read a linked sibling checkout of webdsp, if you use one.
 
 ## Tests
 
@@ -78,8 +77,8 @@ When a change touches one of the invariants below, add the test that pins it.
 
 `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push to `main` (or by hand):
 
-1. Check out Pulse8 and `lwojas/webdsp` side by side.
-2. `npm ci` webdsp, then Pulse8 (which runs webdsp's `prepare`).
+1. Check out the repo and `lwojas/webdsp` side by side.
+2. `npm ci` webdsp, then the app (which runs webdsp's `prepare`).
 3. `npm test`, then `tsc --noEmit && vite build --base=/<repo-name>/`.
 4. Upload `dist/` and deploy.
 
