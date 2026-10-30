@@ -2,11 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearStepLocks, setLockable, setPlockMode, setSound, setSoundControl, tapStep } from "../src/engine/actions";
 import { Groovebox } from "../src/engine/audio";
 import { effectiveSound, effectiveValue, hasLocks, lockParams, sanitizeLocks } from "../src/engine/plock";
-import { BASS_TRACK } from "../src/engine/spec";
-import { initialState } from "../src/engine/state";
+import { DEFAULT_RIG, initialState } from "../src/engine/state";
 import { getState, replaceState, setState } from "../src/engine/store";
 
-const T = BASS_TRACK;
+const T = 5; // the first acid of the starting rig
 const CUT = 0; // FILTER
 const RES = 3; // RES
 const tp = () => getState().patterns[getState().pattern].tracks[T];
@@ -21,23 +20,23 @@ beforeEach(() => {
 describe("parameter locks: data", () => {
   it("steps carry no locks by default and fall back to the base", () => {
     expect(step(4).parameterLocks).toBeUndefined();
-    setSound(T, CUT, 0.6);
+    setSound(T, 0, CUT, 0.6);
     expect(eff(4, CUT)).toBe(0.6);
-    expect(effectiveSound(tp(), T, step(4))).toBe(tp().sound);
+    expect(effectiveSound(tp(), T, step(4))).toBe(tp().slots);
   });
 
   it("locks one step; base edits move unlocked steps and leave locks alone; clearing returns to the base", () => {
-    setSound(T, CUT, 0.6);
+    setSound(T, 0, CUT, 0.6);
     setPlockMode(true);
     setState({ selStep: 4 });
-    setSoundControl(T, CUT, 0.2);
+    setSoundControl(T, 0, CUT, 0.2);
     expect(eff(4, CUT)).toBe(0.2);
     expect(eff(5, CUT)).toBe(0.6);
-    expect(tp().sound[CUT]).toBe(0.6); // the base was not touched
+    expect(tp().slots[0][CUT]).toBe(0.6); // the base was not touched
 
     setPlockMode(false);
-    setSoundControl(T, CUT, 0.8); // normal mode: base
-    expect(tp().sound[CUT]).toBe(0.8);
+    setSoundControl(T, 0, CUT, 0.8); // normal mode: base
+    expect(tp().slots[0][CUT]).toBe(0.8);
     expect(eff(4, CUT)).toBe(0.2);
     expect(eff(5, CUT)).toBe(0.8);
 
@@ -49,26 +48,26 @@ describe("parameter locks: data", () => {
   it("keeps several parameters on a step, and several locked steps, independent", () => {
     setPlockMode(true);
     setState({ selStep: 4 });
-    setSoundControl(T, CUT, 0.2);
-    setSoundControl(T, RES, 0.8);
-    setSoundControl(T, CUT, 0.3); // changing cutoff leaves resonance
-    expect(step(4).parameterLocks).toEqual({ "instrument.cutoff": 0.3, "instrument.reso": 0.8 });
+    setSoundControl(T, 0, CUT, 0.2);
+    setSoundControl(T, 0, RES, 0.8);
+    setSoundControl(T, 0, CUT, 0.3); // changing cutoff leaves resonance
+    expect(step(4).parameterLocks).toEqual({ "slot.a.0": 0.3, "slot.a.3": 0.8 });
     setState({ selStep: 8 });
-    setSoundControl(T, CUT, 0.9);
+    setSoundControl(T, 0, CUT, 0.9);
     setState({ selStep: 12 });
-    setSoundControl(T, CUT, 0.4);
+    setSoundControl(T, 0, CUT, 0.4);
     expect([4, 8, 12].map((i) => eff(i, CUT))).toEqual([0.3, 0.9, 0.4]);
     clearStepLocks(T, 8);
-    expect([4, 8, 12].map((i) => eff(i, CUT))).toEqual([0.3, tp().sound[CUT], 0.4]);
+    expect([4, 8, 12].map((i) => eff(i, CUT))).toEqual([0.3, tp().slots[0][CUT], 0.4]);
     expect(hasLocks(step(4))).toBe(true);
     expect(hasLocks(step(8))).toBe(false);
   });
 
   it("ignores knob moves in P-LOCK mode when no step is selected (the base is untouched)", () => {
-    const before = tp().sound[CUT];
+    const before = tp().slots[0][CUT];
     setPlockMode(true);
-    setSoundControl(T, CUT, 0.01);
-    expect(tp().sound[CUT]).toBe(before);
+    setSoundControl(T, 0, CUT, 0.01);
+    expect(tp().slots[0][CUT]).toBe(before);
     expect(step(0).parameterLocks).toBeUndefined();
   });
 });
@@ -86,23 +85,23 @@ describe("P-LOCK mode on the sequencer", () => {
     expect(step(0).on).toBe(on0);
     // a lock on an empty step creates no note
     tapStep(T, 1);
-    setSoundControl(T, CUT, 0.3);
+    setSoundControl(T, 0, CUT, 0.3);
     expect(step(1).on).toBe(false);
-    expect(step(1).parameterLocks).toEqual({ "instrument.cutoff": 0.3 });
+    expect(step(1).parameterLocks).toEqual({ "slot.a.0": 0.3 });
   });
 
   it("returns to normal add/remove editing on exit, locks intact", () => {
     setPlockMode(true);
     tapStep(T, 1);
-    setSoundControl(T, CUT, 0.3);
+    setSoundControl(T, 0, CUT, 0.3);
     setPlockMode(false);
-    expect(step(1).parameterLocks).toEqual({ "instrument.cutoff": 0.3 });
+    expect(step(1).parameterLocks).toEqual({ "slot.a.0": 0.3 });
     setState({ selStep: -1 });
     tapStep(T, 1);
     expect(step(1).on).toBe(true);
     tapStep(T, 1);
     expect(step(1).on).toBe(false);
-    expect(step(1).parameterLocks).toEqual({ "instrument.cutoff": 0.3 });
+    expect(step(1).parameterLocks).toEqual({ "slot.a.0": 0.3 });
   });
 });
 
@@ -110,10 +109,10 @@ describe("persistence", () => {
   it("survives a JSON round trip and drops junk", () => {
     setPlockMode(true);
     setState({ selStep: 2 });
-    setSoundControl(T, CUT, 0.25);
+    setSoundControl(T, 0, CUT, 0.25);
     const back = JSON.parse(JSON.stringify(step(2)));
-    expect(sanitizeLocks(T, back.parameterLocks)).toEqual({ "instrument.cutoff": 0.25 });
-    expect(sanitizeLocks(T, { "instrument.nope": 1, "instrument.cutoff": 7, "instrument.reso": "x" })).toEqual({ "instrument.cutoff": 1 });
+    expect(sanitizeLocks(T, back.parameterLocks)).toEqual({ "slot.a.0": 0.25 });
+    expect(sanitizeLocks(T, { "instrument.nope": 1, "slot.a.0": 7, "slot.a.3": "x" })).toEqual({ "slot.a.0": 1 });
     expect(sanitizeLocks(T, {})).toBeUndefined();
     expect(sanitizeLocks(T, undefined)).toBeUndefined();
   });
@@ -126,8 +125,9 @@ describe("playback scheduling", () => {
     const busWrites: Array<[number, number, number]> = []; // [time, bus, value]
     gb.runtime = { scheduleParams: vi.fn((e) => scheduled.push(e)), getCurrentTime: () => 0, setNodeParameter: (bus: number, _p: number, v: number) => busWrites.push([-1, bus, v]) };
     gb.queue = { at: (time: number, fn: () => void) => { fn(); busWrites[busWrites.length - 1][0] = time; } };
-    gb.ids = { inst: Array.from({ length: 8 }, (_, i) => 100 + i), trackBus: Array.from({ length: 8 }, (_, i) => 200 + i), busB: Array.from({ length: 8 }, (_, i) => 300 + i) };
-    gb.soundCache = Array.from({ length: 8 }, () => new Array(8).fill(NaN));
+    gb.ids = { inst: Array.from({ length: 8 }, (_, i) => [100 + i, undefined]), trackBus: Array.from({ length: 8 }, (_, i) => 200 + i), busB: Array.from({ length: 8 }, (_, i) => 300 + i) };
+    gb.soundCache = new Map();
+    gb.clampFx = (_: number, v: number) => v;
     gb.busCache = new Map();
     gb.lockedParams = Array.from({ length: 8 }, () => new Map());
     gb.lockedKeys = new Set();
@@ -137,20 +137,20 @@ describe("playback scheduling", () => {
 
   it("sends nothing for steps with no locks", () => {
     const { gb, scheduled } = fake();
-    gb.scheduleLocks(pat(), 0, 1);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 0, 1);
     expect(scheduled).toHaveLength(0);
   });
 
   it("sends the lock on its step, then the base on the next, then nothing", () => {
-    setSound(T, CUT, 0.6);
+    setSound(T, 0, CUT, 0.6);
     setPlockMode(true);
     setState({ selStep: 3 });
-    setSoundControl(T, CUT, 0.2);
+    setSoundControl(T, 0, CUT, 0.2);
     const { gb, scheduled } = fake();
-    gb.scheduleLocks(pat(), 2, 1.0);
-    gb.scheduleLocks(pat(), 3, 1.1);
-    gb.scheduleLocks(pat(), 4, 1.2);
-    gb.scheduleLocks(pat(), 5, 1.3);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 2, 1.0);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 3, 1.1);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 4, 1.2);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 5, 1.3);
     expect(scheduled).toHaveLength(2);
     const [lock] = scheduled[0];
     const [restore] = scheduled[1];
@@ -165,11 +165,11 @@ describe("playback scheduling", () => {
     setState({ selStep: 3 });
     setLockable(T, "fx.reverbSend", 0.9);
     const { gb, scheduled, busWrites } = fake();
-    gb.scheduleLocks(pat(), 3, 1.1);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 3, 1.1);
     expect(scheduled).toHaveLength(0); // buses are not schedulable params: they go through the ticker queue
     expect(busWrites).toEqual([[1.1, 300 + T, 0.9]]);
     expect((gb as any).lockedKeys.has(`${T}:r`)).toBe(true);
-    gb.scheduleLocks(pat(), 4, 1.2);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 4, 1.2);
     expect(busWrites[1]).toEqual([1.2, 300 + T, pat().tracks[T].rev.send]);
     expect((gb as any).lockedKeys.size).toBe(0);
   });
@@ -177,12 +177,12 @@ describe("playback scheduling", () => {
   it("restores from the pattern as it is when the next step is scheduled (a base edit in between is honoured)", () => {
     setPlockMode(true);
     setState({ selStep: 3 });
-    setSoundControl(T, CUT, 0.2);
+    setSoundControl(T, 0, CUT, 0.2);
     const { gb, scheduled } = fake();
-    gb.scheduleLocks(pat(), 3, 1.1);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 3, 1.1);
     setPlockMode(false);
-    setSoundControl(T, CUT, 0.9);
-    gb.scheduleLocks(pat(), 4, 1.2);
+    setSoundControl(T, 0, CUT, 0.9);
+    gb.scheduleLocks(pat(), DEFAULT_RIG, 4, 1.2);
     const lockV = scheduled[0][0].value;
     const restoreV = scheduled[1][0].value;
     expect(restoreV).toBeGreaterThan(lockV);
@@ -206,27 +206,27 @@ describe("sends and MIDI-mapped knobs", () => {
 
   it("a MIDI knob writes the selected step's lock in P-LOCK mode and reads what the UI shows", async () => {
     const { getParam, setParam } = await import("../src/engine/params");
-    setSound(T, CUT, 0.6);
+    setSound(T, 0, CUT, 0.6);
     setPlockMode(true);
     setState({ selStep: 5 });
-    setParam("track.7.sound.cutoff", 0.25, "midi");
-    expect(step(5).parameterLocks).toEqual({ "instrument.cutoff": 0.25 });
-    expect(tp().sound[CUT]).toBe(0.6);
-    expect(getParam("track.7.sound.cutoff", getState())).toBe(0.25);
+    setParam("track.6.a.1", 0.25, "midi");
+    expect(step(5).parameterLocks).toEqual({ "slot.a.0": 0.25 });
+    expect(tp().slots[0][CUT]).toBe(0.6);
+    expect(getParam("track.6.a.1", getState())).toBe(0.25);
     setState({ selStep: 6 });
-    expect(getParam("track.7.sound.cutoff", getState())).toBe(0.6);
+    expect(getParam("track.6.a.1", getState())).toBe(0.6);
     setPlockMode(false);
-    expect(getParam("track.7.sound.cutoff", getState())).toBe(0.6);
-    setParam("track.7.sound.cutoff", 0.9, "midi");
-    expect(tp().sound[CUT]).toBe(0.9);
+    expect(getParam("track.6.a.1", getState())).toBe(0.6);
+    setParam("track.6.a.1", 0.9, "midi");
+    expect(tp().slots[0][CUT]).toBe(0.9);
   });
 
   it("a MIDI knob of another track edits its base in P-LOCK mode", async () => {
     const { setParam } = await import("../src/engine/params");
     setPlockMode(true);
     setState({ selStep: 5 });
-    setParam("track.1.sound.tune", 0.9, "midi");
-    expect(getState().patterns[0].tracks[0].sound[0]).toBe(0.9);
+    setParam("track.1.a.1", 0.9, "midi");
+    expect(getState().patterns[0].tracks[0].slots[0][0]).toBe(0.9);
     expect(getState().patterns[0].tracks[0].steps[5].parameterLocks).toBeUndefined();
   });
 
@@ -234,11 +234,11 @@ describe("sends and MIDI-mapped knobs", () => {
     const { onParamChange } = await import("../src/engine/params");
     setPlockMode(true);
     setState({ selStep: 1 });
-    setSoundControl(T, CUT, 0.15);
+    setSoundControl(T, 0, CUT, 0.15);
     const seen: Array<[string, number]> = [];
     const off = onParamChange((id, v) => seen.push([id, v]));
     setState({ selStep: 2 });
     off();
-    expect(seen).toContainEqual(["track.7.sound.cutoff", tp().sound[CUT]]);
+    expect(seen).toContainEqual(["track.6.a.1", tp().slots[0][CUT]]);
   });
 });

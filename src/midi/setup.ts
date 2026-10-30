@@ -5,7 +5,7 @@ import { storageKey } from "../product";
 import { controller } from "../engine/controller";
 import { setStepNote } from "../engine/actions";
 import { flashKey } from "../engine/keyhl";
-import { TRACKS } from "../engine/spec";
+import { trackProfile } from "../engine/catalogue";
 import { cleanValue, getParam, onParamChange, paramInfo, setParam } from "../engine/params";
 import { getState, observe, setState } from "../engine/store";
 import { createClockFollower } from "./clock";
@@ -118,13 +118,18 @@ function wantedRoute(): MidiRoute | null {
   if (!settings.enabled || settings.keyboard === "off") return null;
   const st = getState();
   const track = st.focus;
-  const spec = TRACKS[track];
-  const id = gb.ids.inst[track];
+  const profile = trackProfile(st.rig, track);
+  // the host plays one instrument: a track with two sounding slots (or a sample) is played by the page, which fans a note out to both
+  const filled = [0, 1].filter((i) => profile.voices[i]);
+  if (filled.length !== 1) return null;
+  const v = profile.voices[filled[0]]!;
+  const id = gb.ids.inst[track][filled[0] as 0 | 1];
+  if (id === undefined) return null;
   // a drum pad: any key plays the drum at its own pitch
-  if (spec.role === "drum") return { kind: "instrument", id, unityNote: 60, fixedPitch: true, ...(spec.chokeGroup !== undefined ? { chokeGroup: spec.chokeGroup } : {}) };
+  if (!v.pitched) return { kind: "instrument", id, unityNote: 60, fixedPitch: true, ...(v.chokeGroup !== undefined ? { chokeGroup: v.chokeGroup } : {}) };
   if (st.arp[track].on || st.selStep >= 0) return null; // the arp, or entering a step's note: the page
   // a key plays `key + keyboard octave - root + track octave` semitones, as the page's own audition does
-  const unity = (spec.rootMidi ?? 0) - 12 * (settings.keyboardOctave + controller.soundOct(track));
+  const unity = (v.rootMidi ?? 0) - 12 * (settings.keyboardOctave + controller.soundOct(track));
   return { kind: "instrument", id, unityNote: Math.min(127, Math.max(0, unity)), holdUntilKeyUp: true };
 }
 
@@ -140,7 +145,7 @@ function syncRoute(): void {
 
 observe((next, prev) => {
   if (
-    next.audio !== prev.audio || next.focus !== prev.focus || next.arp !== prev.arp || next.selStep !== prev.selStep ||
+    next.audio !== prev.audio || next.focus !== prev.focus || next.rig !== prev.rig || next.arp !== prev.arp || next.selStep !== prev.selStep ||
     (next.patterns !== prev.patterns && controller.ready) || next.playPattern !== prev.playPattern
   ) syncRoute();
 });
@@ -160,13 +165,13 @@ function keyboardNote(data: Uint8Array): boolean {
   const on = type === 0x90 && (data[2] & 0x7f) > 0;
   const st = getState();
   const track = st.focus;
-  if (TRACKS[track].role === "drum") {
+  const profile = trackProfile(st.rig, track);
+  if (!profile.melodic) {
     if (on && !routed()) controller.audition(track);
     return true;
   }
-  const spec = TRACKS[track];
   const note = (data[1] & 0x7f) + 12 * settings.keyboardOctave;
-  if (note < (spec.noteLo ?? 24) || note > (spec.noteHi ?? 59)) return true;
+  if (note < profile.noteLo || note > profile.noteHi) return true;
   const useArp = st.arp[track].on && st.selStep < 0;
   if (!on) {
     // release whatever this note was held on, even if the selection moved meanwhile

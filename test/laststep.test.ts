@@ -7,20 +7,24 @@ import type { Sequence } from "webdsp";
 import { positionAt, steadySequence, transitionSequence, type NativeCtx, type Song } from "../src/engine/nativeseq";
 import { fromHostSnapshot, toHostSnapshot } from "../src/engine/persist";
 import { NUM_TRACKS } from "../src/engine/spec";
-import { MELODIC, StepCompiler } from "../src/engine/stepcompile";
-import { initialState, newPattern, trackLast, trackStepAt, type Pattern } from "../src/engine/state";
+import { StepCompiler } from "../src/engine/stepcompile";
+import { DEFAULT_RIG, initialState, newPattern, trackLast, trackStepAt, type Pattern } from "../src/engine/state";
 import { getState, replaceState } from "../src/engine/store";
 
 const ids: GraphIds = {
   trackBus: [1, 2, 3, 4, 5, 6, 7, 8], busB: [11, 12, 13, 14, 15, 16, 17, 18], busC: [21, 22, 23, 24, 25, 26, 27, 28],
   delayBus: [31, 32, 33, 34, 35, 36, 37, 38], reverbBus: [41, 42, 43, 44, 45, 46, 47, 48],
   delayFx: Array.from({ length: 8 }, (_, i) => ({ dub: 100 + i, free: 200 + i })), reverbFx: [300, 301, 302, 303, 304, 305, 306, 307], distFx: [350, 351, 352, 353, 354, 355, 356, 357],
-  inst: [51, 52, 53, 54, 55, 56, 57, 58], manglerBus: 60,
+  // slot A of each track has an instrument; slot B is left without one, so the tests below count what slot A plays
+  slotBus: Array.from({ length: 8 }, (_, i) => [70 + i, 80 + i] as [number, number]), slotFilter: Array.from({ length: 8 }, (_, i) => [90 + i, 100 + i] as [number, number]),
+  inst: [51, 52, 53, 54, 55, 56, 57, 58].map((id) => [id, undefined] as [number, undefined]), manglerBus: 60,
   fx: { filter: 1, sat: 2, crush: 3, phaser: 4, flange: 5, dub: 6, verb: 7 },
 };
-const ctx: NativeCtx = { ids, clamp: (_p, v) => v };
+const ctx: NativeCtx = { ids, clamp: (_p, v) => v, sampleOf: () => undefined };
+/** The instrument of slot A of a track. */
+const inst = (track: number): number => ids.inst[track][0]!;
 const song = (p: Pattern | Pattern[]): Song => ({
-  patterns: Array.isArray(p) ? p : [p], mutes: new Array(NUM_TRACKS).fill(false), solos: new Array(NUM_TRACKS).fill(false), swing: 0.5,
+  rig: DEFAULT_RIG, patterns: Array.isArray(p) ? p : [p], mutes: new Array(NUM_TRACKS).fill(false), solos: new Array(NUM_TRACKS).fill(false), swing: 0.5,
   arp: Array.from({ length: NUM_TRACKS }, defaultArp), fxPlay: true, lanes: true,
 });
 const allOn = (p: Pattern, track: number) => p.tracks[track].steps.forEach((s) => (s.on = true));
@@ -50,7 +54,7 @@ const expected = (p: Pattern, track: number, steps: number, swing = 0.5): number
   const off = (swing - 0.5) * 2 * 0.25;
   return range(steps).filter((g) => p.tracks[track].steps[g % last].on).map((g) => round(g * 0.25 + (g % 2 === 1 ? off : 0)));
 };
-const hits = (p: Pattern, track: number, steps: number, swing = 0.5) => simulate(seqOf(p, layoutOf(0), { swing }), ids.inst[track], steps * 0.25);
+const hits = (p: Pattern, track: number, steps: number, swing = 0.5) => simulate(seqOf(p, layoutOf(0), { swing }), inst(track), steps * 0.25);
 
 describe("last step: playback (polymeter)", () => {
   it("defaults to the pattern length: one cycle, no loops, as before", () => {
@@ -120,7 +124,7 @@ describe("last step: playback (polymeter)", () => {
   it("locks follow the track's own loop", () => {
     const p = newPattern();
     p.tracks[1].last = 5;
-    p.tracks[1].steps[0].parameterLocks = { "instrument.tune": 0.9 };
+    p.tracks[1].steps[0].parameterLocks = { "slot.a.0": 0.9 };
     const seq = seqOf(p)!;
     const loop = seq.loops![0];
     expect(loop.events.some((e) => e.kind === "param")).toBe(true);
@@ -133,7 +137,7 @@ describe("last step: playback (polymeter)", () => {
     a.tracks[0].steps[0].on = true;
     const chain = seqOf([a, newPattern()], layoutOf(0, 1))!;
     expect(chain.loops).toBeUndefined();
-    expect(simulate(chain, ids.inst[0], 8)).toEqual([0, 3.25]);
+    expect(simulate(chain, inst(0), 8)).toEqual([0, 3.25]);
     expect(seqOf([a], layoutOf(0, 0))!.loops).toHaveLength(1);
   });
 
@@ -142,7 +146,7 @@ describe("last step: playback (polymeter)", () => {
     p.tracks[0].last = 7;
     p.tracks[0].steps[0].on = true;
     const seq = seqOf(p, { patterns: [0], origin: 2 })!;
-    expect(simulate(seq, ids.inst[0], 6)).toEqual(range(24).filter((g) => (g - 8) % 7 === 0 && g >= 0).map((g) => g / 4).filter((b) => b < 6));
+    expect(simulate(seq, inst(0), 6)).toEqual(range(24).filter((g) => (g - 8) % 7 === 0 && g >= 0).map((g) => g / 4).filter((b) => b < 6));
   });
 
   it("positionAt reports the run, so the playhead and host notes follow each track's own loop", () => {
@@ -165,14 +169,14 @@ describe("last step: playback (polymeter)", () => {
     b.tracks[0].steps[0].on = true;
     const seq = transitionSequence(song([a, b]), layoutOf(0), { patterns: [1], origin: 8 }, 8, 6, ctx)!;
     expect(seq.loops).toBeUndefined();
-    const at = simulate(seq, ids.inst[0], 20).filter((x) => x >= 6 && x < 12);
+    const at = simulate(seq, inst(0), 20).filter((x) => x >= 6 && x < 12);
     // A (3-step loop, 1.5 beats with its second lap: hits every 0.75 beats) up to beat 8, B (5 steps = 1.25 beats) from 8
     expect(at.filter((x) => x < 8)).toEqual([6, 6.75, 7.5]);
     expect(at.filter((x) => x >= 8)).toEqual([8, 9.25, 10.5, 11.75]);
   });
 
   it.each([[2, 5], [3, 5], [3, 8], [2, 3]])("an arpeggiated track (rate %i) loops with its loop: the host plays what the live scheduler would (last step %i)", (rate, last) => {
-    const track = MELODIC[0];
+    const track = 5; // the first acid
     const p = newPattern();
     p.tracks[track].last = last;
     [0, 2, 3].forEach((i, k) => ((p.tracks[track].steps[i].on = true), (p.tracks[track].steps[i].note = 40 + 3 * k)));
@@ -180,7 +184,7 @@ describe("last step: playback (polymeter)", () => {
     arp[track] = { ...defaultArp(), on: true, rate, octaves: 2, dir: "updown" };
     // the live scheduler: the pattern is walked with a run counter that never restarts, one compiler for the whole session
     const live = new StepCompiler();
-    const clock = { stepDur: 0.125, swing: 0.5, arp, rnd: () => 0.5 };
+    const clock = { stepDur: 0.125, swing: 0.5, arp, rig: DEFAULT_RIG, rnd: () => 0.5 };
     const played: Array<[number, number]> = [];
     for (let g = 0; g < 160; g++) {
       live.step(p, g % p.length, g, g, g * 0.125, clock, (n) => n.track === track && played.push([round(n.params.time * 2), n.params.pitch ?? 0]));
@@ -190,7 +194,7 @@ describe("last step: playback (polymeter)", () => {
     const got: Array<[number, number]> = [];
     for (const c of cycles) {
       for (let base = 0; base < 40; base += c.lengthBeats) {
-        for (const e of c.events) if (e.kind === "instrument" && e.instrument === ids.inst[track] && base + e.beat < 40 - 1e-9) got.push([round(base + e.beat), e.pitch ?? 0]);
+        for (const e of c.events) if (e.kind === "instrument" && e.instrument === inst(track) && base + e.beat < 40 - 1e-9) got.push([round(base + e.beat), e.pitch ?? 0]);
       }
     }
     const order = (a: [number, number], b: [number, number]) => a[0] - b[0] || a[1] - b[1];

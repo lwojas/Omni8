@@ -7,26 +7,31 @@ import type { GraphIds } from "../src/engine/audio";
 import {
   baseLayout, cueLayout, cycleBeats, nextBoundary, positionAt, steadySequence, transitionSequence, type NativeCtx, type Song,
 } from "../src/engine/nativeseq";
-import { normToUnits, NUM_TRACKS, TRACKS } from "../src/engine/spec";
-import { newPattern, type Pattern } from "../src/engine/state";
+import { trackProfile } from "../src/engine/catalogue";
+import { normToUnits, NUM_TRACKS } from "../src/engine/spec";
+import { DEFAULT_RIG, newPattern, type Pattern } from "../src/engine/state";
 
 const ids: GraphIds = {
   trackBus: [1, 2, 3, 4, 5, 6, 7, 8], busB: [11, 12, 13, 14, 15, 16, 17, 18], busC: [21, 22, 23, 24, 25, 26, 27, 28],
   delayBus: [31, 32, 33, 34, 35, 36, 37, 38], reverbBus: [41, 42, 43, 44, 45, 46, 47, 48],
   delayFx: Array.from({ length: 8 }, (_, i) => ({ dub: 100 + i, free: 200 + i })), reverbFx: [300, 301, 302, 303, 304, 305, 306, 307], distFx: [350, 351, 352, 353, 354, 355, 356, 357],
-  inst: [51, 52, 53, 54, 55, 56, 57, 58], manglerBus: 60,
+  // slot A of each track has an instrument; slot B is left without one, so the tests below count what slot A plays
+  slotBus: Array.from({ length: 8 }, (_, i) => [70 + i, 80 + i] as [number, number]), slotFilter: Array.from({ length: 8 }, (_, i) => [90 + i, 100 + i] as [number, number]),
+  inst: [51, 52, 53, 54, 55, 56, 57, 58].map((id) => [id, undefined] as [number, undefined]), manglerBus: 60,
   fx: { filter: 1, sat: 2, crush: 3, phaser: 4, flange: 5, dub: 6, verb: 7 },
 };
-const ctx: NativeCtx = { ids, clamp: (_p, v) => v };
+const ctx: NativeCtx = { ids, clamp: (_p, v) => v, sampleOf: () => undefined };
+/** The instrument of slot A of a track. */
+const inst = (track: number): number => ids.inst[track][0]!;
 
 const blank = (): Pattern => newPattern();
 const song = (patterns: Pattern[], over: Partial<Song> = {}): Song => ({
-  patterns, mutes: new Array(NUM_TRACKS).fill(false), solos: new Array(NUM_TRACKS).fill(false), swing: 0.5,
+  rig: DEFAULT_RIG, patterns, mutes: new Array(NUM_TRACKS).fill(false), solos: new Array(NUM_TRACKS).fill(false), swing: 0.5,
   arp: Array.from({ length: NUM_TRACKS }, defaultArp), fxPlay: true, lanes: true, ...over,
 });
 const notes = (events: SequenceEvent[]) => events.filter((e) => e.kind === "instrument");
 const params = (events: SequenceEvent[]) => events.filter((e) => e.kind === "param");
-const BASS = TRACKS.findIndex((t) => t.role === "bass");
+const BASS = 5; // the first acid track of the starting rig
 
 describe("notes", () => {
   it("places steps on the beat grid: 16 steps are 4 beats, a step is a quarter beat", () => {
@@ -41,8 +46,7 @@ describe("notes", () => {
 
   it("accent is a harder hit and a drum carries its choke group, never a duration", () => {
     const p = blank();
-    const hat = TRACKS.findIndex((t) => t.chokeGroup !== undefined);
-    expect(hat).toBeGreaterThanOrEqual(0);
+    const hat = 2; // the closed hat: its drum voice is in choke group 1
     p.tracks[hat].steps[0].on = true;
     p.tracks[hat].steps[2].on = true;
     p.tracks[hat].steps[2].acc = true;
@@ -50,7 +54,7 @@ describe("notes", () => {
     expect(a).toMatchObject({ velocity: 0.7 });
     expect(b).toMatchObject({ velocity: 1 });
     expect(a).not.toHaveProperty("durationBeats");
-    expect(a).toHaveProperty("chokeGroup", TRACKS[hat].chokeGroup);
+    expect(a).toHaveProperty("chokeGroup", 1);
   });
 
   it("swing delays odd steps by the live scheduler's amount", () => {
@@ -259,7 +263,7 @@ describe("the cue transition", () => {
 });
 
 describe("parameter locks", () => {
-  const FILTER = TRACKS[BASS].controls[0];
+  const FILTER = trackProfile(DEFAULT_RIG, BASS).voices[0]!.controls[0];
   const lockOn = (p: Pattern, step: number, locks: Record<string, number>) => { p.tracks[BASS].steps[step].parameterLocks = locks; };
   const seqOf = (p: Pattern[], over: Partial<Song> = {}) => steadySequence(song(p, over), { patterns: p.map((_, i) => i), origin: 0 }, ctx)!;
 
@@ -269,12 +273,12 @@ describe("parameter locks", () => {
 
   it("writes the lock on its step and the base back on the next, to the instrument or the send bus", () => {
     const p = blank();
-    p.tracks[BASS].sound[0] = 0.6;
-    lockOn(p, 4, { "instrument.cutoff": 0.2, "fx.delaySend": 0.9 });
+    p.tracks[BASS].slots[0][0] = 0.6;
+    lockOn(p, 4, { "slot.a.0": 0.2, "fx.delaySend": 0.9 });
     const ev = params(seqOf([p]).events);
     const at = (beat: number) => ev.filter((e) => e.beat === beat);
     expect(at(1)).toHaveLength(2);
-    expect(at(1).find((e) => "instrument" in (e as any).target)).toMatchObject({ target: { instrument: ids.inst[BASS] }, param: FILTER.param });
+    expect(at(1).find((e) => "instrument" in (e as any).target)).toMatchObject({ target: { instrument: inst(BASS) }, param: FILTER.param });
     expect(at(1).find((e) => "bus" in (e as any).target)).toMatchObject({ target: { bus: ids.trackBus[BASS] }, value: 0.9 });
     expect(at(1.25)).toHaveLength(2);
     expect(at(1.25).find((e) => "bus" in (e as any).target)).toMatchObject({ value: p.tracks[BASS].dly.send }); // back to base
@@ -291,16 +295,16 @@ describe("parameter locks", () => {
 
   it("follows swing, like the live scheduler", () => {
     const p = blank();
-    lockOn(p, 1, { "instrument.cutoff": 0.2 });
+    lockOn(p, 1, { "slot.a.0": 0.2 });
     expect(params(seqOf([p], { swing: 0.75 }).events)[0].beat).toBeCloseTo(0.25 + 0.125, 6);
   });
 
   it("wins over a per-bar state write on the same beat", () => {
     const a = blank();
     const b = blank();
-    a.tracks[BASS].sound[0] = 0.3;
-    b.tracks[BASS].sound[0] = 0.8; // patterns disagree: each bar start writes the sound
-    lockOn(b, 0, { "instrument.cutoff": 0.1 });
+    a.tracks[BASS].slots[0][0] = 0.3;
+    b.tracks[BASS].slots[0][0] = 0.8; // patterns disagree: each bar start writes the sound
+    lockOn(b, 0, { "slot.a.0": 0.1 });
     const ev = params(seqOf([a, b]).events).filter((e) => e.beat === 4 && "instrument" in (e as any).target && e.param === FILTER.param);
     expect(ev).toHaveLength(1);
     expect(ev[0].value).toBeCloseTo(normToUnits(FILTER, 0.1), 6);

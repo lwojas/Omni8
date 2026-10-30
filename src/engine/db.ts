@@ -7,9 +7,11 @@
 import { PRODUCT } from "../product";
 
 const DB_NAME = PRODUCT.id;
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 export const SAVES_STORE = "saves";
 export const CURRENT_STORE = "current";
+/** The shared sample library's imported samples (the factory set is generated, not stored): `{ id, name, bytes }`. */
+export const SAMPLES_STORE = "samples";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -21,6 +23,7 @@ export function openDb(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(SAVES_STORE)) db.createObjectStore(SAVES_STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(CURRENT_STORE)) db.createObjectStore(CURRENT_STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(SAMPLES_STORE)) db.createObjectStore(SAMPLES_STORE, { keyPath: "id" });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { getHostState, hasEmbeddedHost } from "webdsp";
 import { App } from "./App";
 import { controller } from "./engine/controller";
+import { refreshLibrary } from "./engine/actions";
 import { autosave, loadProject, restoreFromHost } from "./engine/persist";
 import { midi } from "./midi/setup";
 import "./index.css";
@@ -17,11 +18,12 @@ const restored = host ? restoreFromHost(host, () => controller.stop()) : loadPro
 // created, only to be configured), which shortens the silence after a reopened window.
 if (hasEmbeddedHost()) {
   // Reopening the plugin window: keep the engine the last window built (and the song it is playing) instead of swapping in an
-  // empty one. Pulse.8 builds the same graph every time, in the same order, which is what lets the plugin recognise it; if the
+  // empty one. Hybrid.8 builds the same graph every time, in the same order, which is what lets the plugin recognise it; if the
   // graph ever differs the plugin falls back to a fresh engine (webvst, EngineHost.h "adopt").
   (globalThis as { __webdspHost?: { adoptEngine?: boolean } }).__webdspHost!.adoptEngine = true;
   void controller.start(restored);
 }
+void refreshLibrary();
 void restored.then(() => {
   autosave();
   midi.boot();

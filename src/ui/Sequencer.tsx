@@ -9,7 +9,9 @@ import { flashKey, registerKey } from "../engine/keyhl";
 import { PUNCHES } from "../engine/mangler";
 import { isChromatic, notesInRange, rootAtOrAbove, rootAtOrBelow, type ProjectScale } from "../engine/scale";
 import { hasLocks } from "../engine/plock";
+import { trackProfile } from "../engine/catalogue";
 import { noteName, TRACKS } from "../engine/spec";
+import { accentOf, useProfile } from "./profile";
 import { DEFAULT_GATE, FX_LANES, GATE_BUTTONS, GATES, LENGTHS, PAGE, trackLast } from "../engine/state";
 import { getState, setState, useStore } from "../engine/store";
 import { ArpControl } from "./ArpControl";
@@ -18,7 +20,6 @@ import { Modal } from "./Modal";
 import { usePlayheadCell, usePlayheadEffect } from "./usePlayhead";
 import { useMedia, WIDE } from "./useMedia";
 
-const accentStyle = (track: number): CSSProperties => ({ "--acc": `var(${TRACKS[track].accent})` }) as CSSProperties;
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 // --- page selector -----------------------------------------------------------------------------
@@ -154,13 +155,13 @@ function SeqViewTabs() {
 // --- track rail: select / mute / solo ---------------------------------------------------------------
 
 function RailItem({ track }: { track: number }) {
-  const spec = TRACKS[track];
+  const spec = useProfile(track);
   const focused = useStore((s) => s.focus === track);
   const muted = useStore((s) => s.mutes[track]);
   const solo = useStore((s) => s.solos[track]);
   const dim = useStore((s) => (s.solos.some(Boolean) ? !s.solos[track] : s.mutes[track]));
   return (
-    <div className="rail-item" style={accentStyle(track)} data-focus={focused} data-dim={dim}>
+    <div className="rail-item" style={accentOf(spec)} data-focus={focused} data-dim={dim}>
       <button
         type="button" className="rail-main" aria-pressed={focused} aria-label={`Select ${spec.name}`}
         onClick={() => {
@@ -171,8 +172,8 @@ function RailItem({ track }: { track: number }) {
         <span className="rail-no">{track + 1}</span>
         <span className="rail-name">
           <b className="long">{spec.name}</b>
-          <b className="short">{spec.short}</b>
-          <small>{spec.engine}</small>
+          <b className="short">{spec.tag}</b>
+          <small>{spec.desc}</small>
         </span>
       </button>
       <span className="rail-ms">
@@ -224,7 +225,7 @@ const Pad = memo(function Pad({ track, abs, on, acc, slide, selected, outside, l
       data-beat={abs % 4 === 0}
       aria-pressed={on}
       ref={playRef}
-      aria-label={`${TRACKS[track].name} step ${abs + 1}${on ? (note ? ` ${note}` : "") : " off"}${acc ? " accent" : ""}${slide ? " slide" : ""}${locked ? " with parameter locks" : ""}`}
+      aria-label={`${trackProfile(getState().rig, track).name} step ${abs + 1}${on ? (note ? ` ${note}` : "") : " off"}${acc ? " accent" : ""}${slide ? " slide" : ""}${locked ? " with parameter locks" : ""}`}
       {...press}
     >
       <span className="pad-num">{pad2(abs + 1)}</span>
@@ -243,10 +244,10 @@ function Pads({ track }: { track: number }) {
   const selStep = useStore((s) => (s.focus === track ? s.selStep : -1));
   const last = useStore((s) => trackLast(s.patterns[s.pattern], track));
   const plock = useStore((s) => s.plock);
-  const spec = TRACKS[track];
-  const melodic = spec.role !== "drum";
+  const spec = useProfile(track);
+  const melodic = spec.melodic;
   return (
-    <div className="pads" style={accentStyle(track)} data-plock={plock} role="group" aria-label={`${spec.name} steps`}>
+    <div className="pads" style={accentOf(spec)} data-plock={plock} role="group" aria-label={`${spec.name} steps`}>
       {Array.from({ length: PAGE }, (_, i) => {
         const abs = page * PAGE + i;
         const s = tp.steps[abs];
@@ -298,17 +299,16 @@ function GateControl({ track }: { track: number }) {
 }
 
 function TrackHeader({ track }: { track: number }) {
-  const spec = TRACKS[track];
-  const melodic = spec.role !== "drum";
-  const preset = useStore((s) => s.patterns[s.pattern].tracks[track].preset);
+  const spec = useProfile(track);
+  const melodic = spec.melodic;
   const phone = useMedia("(max-width: 699px)");
   const plock = useStore((s) => s.plock);
   return (
-    <div className="track-head" style={accentStyle(track)}>
+    <div className="track-head" style={accentOf(spec)}>
       <div className="track-id">
         <span className="track-no">T{track + 1}</span>
         <strong>{spec.name}</strong>
-        <span className="silk">{preset || spec.engine}</span>
+        <span className="silk">{spec.desc}</span>
       </div>
       <div className="track-btns">
         {melodic && <GateControl track={track} />}
@@ -334,12 +334,12 @@ function SeqMenu({ track }: { track: number }) {
       <button type="button" className="btn sm" aria-haspopup="dialog" aria-expanded={open} aria-label="Sequencer actions" title="Random, clear, last step" onClick={() => setOpen(true)}>
         SEQ
       </button>
-      <Modal open={open} title={`Sequence · ${TRACKS[track].name}`} onClose={close} className="seq-modal">
+      <Modal open={open} title={`Sequence · ${trackProfile(getState().rig, track).name}`} onClose={close} className="seq-modal">
         <div className="seq-menu">
           <button type="button" className="btn" onClick={() => { randomize(track); close(); }}>RND<small>Random pattern</small></button>
           <ConfirmButton label="CLR" className="btn" onConfirm={() => { clearTrack(track); close(); }} />
           <Stepper
-            className="seq-last" label="LAST STEP" ariaLabel={`Last step of ${TRACKS[track].name}, of ${length}`} value={<>{last}<small>/{length}</small></>}
+            className="seq-last" label="LAST STEP" ariaLabel={`Last step of ${trackProfile(getState().rig, track).name}, of ${length}`} value={<>{last}<small>/{length}</small></>}
             decLabel="Earlier last step" incLabel="Later last step" decDisabled={last <= 1} incDisabled={last >= length}
             onNudge={(d) => setLastStep(track, last + d)}
           />
@@ -442,20 +442,20 @@ function PianoKey({ track, note, ...rest }: { track: number; note: number } & Bu
 /** The window of the keyboard on screen (two octaves wide, one on phones), kept on the selected note,
  * and what the shift arrows move between. Chromatic windows start on a C, scale windows on the root. */
 function useKeyWindow(track: number, step: number, scale: ProjectScale) {
-  const spec = TRACKS[track];
+  const spec = useProfile(track);
   const wide = useMedia(WIDE);
   const octaves = wide ? 2 : 1;
   const span = octaves * 12;
   const note = useStore((s) => (step >= 0 ? s.patterns[s.pattern].tracks[track].steps[step].note : -1));
   const oct = useStore((s) => s.patterns[s.pattern].tracks[track].oct);
-  const lo = spec.noteLo ?? 24;
-  const hi = spec.noteHi ?? 59;
+  const lo = spec.noteLo;
+  const hi = spec.noteHi;
   const chromatic = isChromatic(scale);
   const floorTo = (n: number) => (chromatic ? Math.floor(n / 12) * 12 : rootAtOrBelow(scale, n));
   const minBase = chromatic ? Math.floor(lo / 12) * 12 : rootAtOrAbove(scale, lo);
   const maxBase = Math.max(minBase, floorTo(hi) - (octaves - 1) * 12);
   const clamp = (n: number) => Math.min(maxBase, Math.max(minBase, n));
-  const [base, setBase] = useState(() => clamp(floorTo(spec.defaultNote ?? lo)));
+  const [base, setBase] = useState(() => clamp(floorTo(spec.defaultNote || lo)));
   // keep the selected note on screen
   useEffect(() => {
     if (note >= 0 && (note < base || note > base + span)) setBase(clamp(floorTo(note)));
@@ -532,22 +532,22 @@ function Keys({ track, step, scale }: { track: number; step: number; scale: Proj
 }
 
 function StepEditor({ track }: { track: number }) {
-  const spec = TRACKS[track];
+  const spec = useProfile(track);
   // In P-LOCK mode a selected step is only a target for locks: its note, flags and gate are not edited from here.
   const plock = useStore((s) => s.plock);
   const selStep = useStore((s) => (s.focus === track && !s.plock ? s.selStep : -1));
   const step = useStore((s) => (s.selStep >= 0 && s.focus === track && !s.plock ? s.patterns[s.pattern].tracks[track].steps[s.selStep] : null));
   const scale = useStore((s) => s.scale);
   const phone = useMedia("(max-width: 699px)");
-  if (spec.role === "drum") {
+  if (!spec.melodic) {
     return (
-      <div className="step-editor hint" style={accentStyle(track)}>
+      <div className="step-editor hint" style={accentOf(spec)}>
         <span className="silk">{plock ? (phone ? "P-LOCK" : "P-LOCK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB") : "TAP A STEP TO TOGGLE · HOLD FOR ACCENT"}</span>
       </div>
     );
   }
   return (
-    <div className="step-editor" style={accentStyle(track)}>
+    <div className="step-editor" style={accentOf(spec)}>
       <div className="step-editor-top">
         {step ? (
           <>
@@ -570,12 +570,13 @@ function StepEditor({ track }: { track: number }) {
 export function SequencerPanel() {
   const track = useStore((s) => s.focus);
   const view = useStore((s) => s.seqView);
+  const spec = useProfile(track);
   return (
     <>
       <PageBar />
-      <div className="seq-body" style={accentStyle(track)}>
+      <div className="seq-body" style={accentOf(spec)}>
         <TrackRail />
-        <div className="stage" data-drum={TRACKS[track].role === "drum"}>
+        <div className="stage" data-drum={!spec.melodic}>
           <SeqViewTabs />
           {view === "steps" ? (
             <>

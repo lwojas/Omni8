@@ -1,69 +1,94 @@
 // Sound, mixer, FX mangler and pattern panels.
 import { useRef, useState, type CSSProperties } from "react";
+import { DRUM_VOICE_KEYS, DRUM_VOICES, ENGINES, defaultSlotSound, slotControls, SLOT_NAMES, type EngineId } from "../engine/catalogue";
 import {
-  clearChain, clearPattern, clearStepLocks, loadKit, loadSynthPreset, removeChainEntry, setDelay, setLevel, setLockable, setPlockMode, setPunchParam,
-  setPunchSend, setReverb, setSoundControl, setSweep, toggleMute, toggleSolo,
+  clearChain, clearPattern, clearStepLocks, removeChainEntry, setDelay, setDrumVoice, setLevel, setLockable, setPlockMode, setPunchParam,
+  setPunchSend, setReverb, setSlotEngine, setSlotTab, setSound, setSoundControl, setSweep, toggleMute, toggleSolo,
 } from "../engine/actions";
 import { controller } from "../engine/controller";
 import { PING_PONG, PING_PONG_NOW_STEPS, punchById, PUNCHES, SWEEPS } from "../engine/mangler";
 import { hasLocks, lockStep, soundParam } from "../engine/plock";
-import { KITS, presetsFor } from "../engine/presets";
-import { defaultSound, hasDistortion, formatControl, TRACKS, unitsToNorm } from "../engine/spec";
+import { formatControl, TRACKS } from "../engine/spec";
 import { BANK_SIZE, defaultLevel, MAX_CHAIN, NUM_PATTERNS } from "../engine/state";
 import { BEAT_DIVISIONS, defaultDelaySend, defaultReverbSend, DELAY_MODES, formatDist, formatFreeDelay } from "../engine/trackfx";
 import { getState, setState, useStore } from "../engine/store";
 import { Knob, Slider } from "./controls";
 import { Modal } from "./Modal";
 import { ConfirmButton } from "./Sequencer";
+import { accentOf, useProfile } from "./profile";
+import { SampleModal } from "./SampleModal";
 
-const accentStyle = (track: number): CSSProperties => ({ "--acc": `var(${TRACKS[track].accent})` }) as CSSProperties;
 
 // --- sound -------------------------------------------------------------------------------------
 
+function StripButton({ track }: { track: number }) {
+  const focus = useStore((s) => s.focus === track);
+  const profile = useProfile(track);
+  return (
+    <button
+      type="button" role="tab" aria-selected={focus} className="strip-btn" data-active={focus}
+      style={accentOf(profile)} onClick={() => setState({ focus: track, selStep: -1 })}
+    >
+      {profile.short}
+    </button>
+  );
+}
+
 function TrackStrip() {
-  const focus = useStore((s) => s.focus);
   return (
     <div className="track-strip phone-only" role="tablist" aria-label="Track">
-      {TRACKS.map((t) => (
-        <button
-          key={t.id} type="button" role="tab" aria-selected={focus === t.id} className="strip-btn" data-active={focus === t.id}
-          style={accentStyle(t.id)} onClick={() => setState({ focus: t.id, selStep: -1 })}
-        >
-          {t.short}
-        </button>
-      ))}
+      {TRACKS.map((t) => <StripButton key={t.id} track={t.id} />)}
     </div>
   );
 }
 
-function PresetChips({ track }: { track: number }) {
-  const current = useStore((s) => s.patterns[s.pattern].tracks[track].preset);
-  const spec = TRACKS[track];
-  if (spec.role === "drum") {
-    return (
-      <div className="chips" role="group" aria-label="Drum kit">
-        <span className="silk">KIT</span>
-        {KITS.map((k, i) => (
-          <button key={k.name} type="button" className="chip" data-active={current === k.name} onClick={() => loadKit(i)}>
-            {k.name}
-          </button>
-        ))}
-      </div>
-    );
-  }
+/** The two slot tabs of a track: which engine the panel below edits. They only choose; both slots always sound. */
+function SlotTabs({ track }: { track: number }) {
+  const slot = useStore((s) => s.slot);
+  const profile = useProfile(track);
   return (
-    <div className="chips" role="group" aria-label="Preset">
-      <span className="silk">PRESET</span>
-      {presetsFor(track).map((p, i) => (
-        <button key={p.name} type="button" className="chip" data-active={current === p.name} onClick={() => loadSynthPreset(track, i)}>
-          {p.name}
+    <div className="slot-tabs seg" role="tablist" aria-label="Slot">
+      {([0, 1] as const).map((i) => (
+        <button
+          key={i} type="button" role="tab" aria-selected={slot === i} className="chip" data-active={slot === i}
+          aria-label={`Slot ${SLOT_NAMES[i]}: ${profile.voices[i]?.name ?? "empty"}`} onClick={() => setSlotTab(i)}
+        >
+          {SLOT_NAMES[i]} <span className="slot-name">{profile.voices[i]?.short ?? "—"}</span>
         </button>
       ))}
     </div>
   );
 }
 
-/** A synth's distortion insert (synth ▶ distortion ▶ fader): one amount, lockable like the knobs. Under the knobs, on every layout. */
+/** The engine names (nine at most) and, for DRUM and SAMPLE, what it plays: a drum voice or a shared sample. */
+function EngineChips({ track, slot }: { track: number; slot: 0 | 1 }) {
+  const rig = useStore((s) => s.rig[track][slot]);
+  const library = useStore((s) => s.library);
+  const [picking, setPicking] = useState(false);
+  const sampleName = library.find((x) => x.id === rig.variant)?.name ?? "MISSING";
+  return (
+    <div className="chips" role="group" aria-label={`Slot ${SLOT_NAMES[slot]} engine`}>
+      {ENGINES.map((e) => (
+        <button key={e.id} type="button" className="chip" data-active={rig.engine === e.id} aria-pressed={rig.engine === e.id} onClick={() => setSlotEngine(track, slot, e.id as EngineId)}>
+          {e.name}
+        </button>
+      ))}
+      {rig.engine === "drum" && (
+        <select className="chip variant" aria-label="Drum voice" value={rig.variant} onChange={(e) => setDrumVoice(track, slot, e.target.value)}>
+          {DRUM_VOICE_KEYS.map((k) => <option key={k} value={k}>{DRUM_VOICES[k].name}</option>)}
+        </select>
+      )}
+      {rig.engine === "sample" && (
+        <>
+          <button type="button" className="chip variant" aria-haspopup="dialog" aria-label={`Sample: ${sampleName}. Change`} onClick={() => setPicking(true)}>{sampleName} ▾</button>
+          <SampleModal open={picking} track={track} slot={slot} onClose={() => setPicking(false)} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The track's distortion insert (both slots ▶ distortion ▶ fader): one amount, lockable like the knobs. Under the knobs, on every layout. */
 function DistortionBar({ track, locks }: { track: number; locks: Record<string, number> | undefined }) {
   const base = useStore((s) => s.patterns[s.pattern].tracks[track].dist ?? 0);
   const dist = locks?.["fx.distortion"] ?? base;
@@ -90,45 +115,55 @@ function PlockBar({ track }: { track: number }) {
 
 export function SoundPanel() {
   const track = useStore((s) => s.focus);
-  const baseSound = useStore((s) => s.patterns[s.pattern].tracks[track].sound);
+  const slot = useStore((s) => s.slot);
+  const profile = useProfile(track);
+  const voice = profile.voices[slot];
+  const baseSound = useStore((s) => s.patterns[s.pattern].tracks[track].slots[slot]);
   // In P-LOCK mode the knobs show the selected step: its locks over the base. Neither is changed by looking.
   const locks = useStore((s) => lockStep(s, track)?.parameterLocks);
   const plock = useStore((s) => s.plock);
-  const sound = baseSound.map((v, i) => locks?.[soundParam(track, i).id] ?? v);
   const playing = useStore((s) => s.playing);
   const baseDly = useStore((s) => s.patterns[s.pattern].tracks[track].dly.send);
   const baseRev = useStore((s) => s.patterns[s.pattern].tracks[track].rev.send);
   const dlySend = locks?.["fx.delaySend"] ?? baseDly;
   const revSend = locks?.["fx.reverbSend"] ?? baseRev;
   const punchSend = useStore((s) => s.patterns[s.pattern].tracks[track].punch !== false);
-  const spec = TRACKS[track];
-  const defaults = defaultSound(spec);
+  const defaults = defaultSlotSound(voice);
+  const controls = voice ? slotControls(voice) : [];
   return (
-    <div className="sound" style={accentStyle(track)} data-plock={plock}>
+    <div className="sound" style={accentOf(profile)} data-plock={plock}>
       <TrackStrip />
       <header className="panel-title">
         <span className="dot" />
-        <h2>{spec.name}</h2>
-        <span className="silk">{spec.engine}</span>
+        <h2>{profile.name}</h2>
+        <span className="silk">{voice?.desc ?? "EMPTY SLOT"}</span>
+        <SlotTabs track={track} />
       </header>
-      <PresetChips track={track} />
+      <EngineChips track={track} slot={slot} />
       <div className="sound-main">
-      <div className="knobs" style={{ "--n": spec.controls.length } as CSSProperties}>
-        {spec.controls.map((c, i) => (
-          <Knob
-            key={`${track}-${c.key}`}
-            label={c.label}
-            value={sound[i]}
-            def={defaults[i] ?? unitsToNorm(c, c.def)}
-            steps={c.steps?.length}
-            readout={formatControl(c, sound[i])}
-            locked={locks?.[soundParam(track, i).id] !== undefined}
-            onChange={(v) => setSoundControl(track, i, v)}
-            onTouch={() => { if (!playing && !plock) controller.audition(track); }}
-          />
-        ))}
+      <div className="knobs" style={{ "--n": Math.max(1, controls.length) } as CSSProperties}>
+        {controls.map(({ control: c, at }) => {
+          // a sample's window and decay are read when a note triggers: they have a base value only, no step locks
+          const lockable = c.dest !== "sample";
+          const lockId = soundParam(track, slot, at).id;
+          const value = (lockable ? locks?.[lockId] : undefined) ?? baseSound[at];
+          return (
+            <Knob
+              key={`${track}-${slot}-${voice!.key}-${c.key}`}
+              label={c.label}
+              value={value}
+              def={defaults[at]}
+              steps={c.steps?.length}
+              readout={formatControl(c, value)}
+              locked={lockable && locks?.[lockId] !== undefined}
+              onChange={(v) => (lockable ? setSoundControl(track, slot, at, v) : setSound(track, slot, at, v))}
+              onTouch={() => { if (!playing && !plock) controller.audition(track); }}
+            />
+          );
+        })}
+        {!voice && <span className="silk empty-slot">PICK AN ENGINE FOR SLOT {SLOT_NAMES[slot]}</span>}
       </div>
-      {hasDistortion(track) && <DistortionBar track={track} locks={locks} />}
+      <DistortionBar track={track} locks={locks} />
       </div>
       <PlockBar track={track} />
       <div className="sends" role="group" aria-label="FX sends">
@@ -145,7 +180,7 @@ export function SoundPanel() {
         </div>
         <button
           type="button" className="btn sm punch-send" data-active={punchSend} aria-pressed={punchSend}
-          aria-label={`Send ${spec.name} to Punch FX`} onClick={() => setPunchSend(track, !punchSend)}
+          aria-label={`Send ${profile.name} to Punch FX`} onClick={() => setPunchSend(track, !punchSend)}
         >
           PUNCH FX
         </button>
@@ -157,12 +192,12 @@ export function SoundPanel() {
 // --- mixer ---------------------------------------------------------------------------------------
 
 function MixRow({ track }: { track: number }) {
-  const spec = TRACKS[track];
+  const spec = useProfile(track);
   const level = useStore((s) => s.patterns[s.pattern].tracks[track].level);
   const mute = useStore((s) => s.mutes[track]);
   const solo = useStore((s) => s.solos[track]);
   return (
-    <div className="mix-row" style={accentStyle(track)} data-dim={mute}>
+    <div className="mix-row" style={accentOf(spec)} data-dim={mute}>
       <button type="button" className="mix-name" onClick={() => setState({ focus: track, selStep: -1 })}>{spec.name}</button>
       <Slider label="LVL" value={level} def={defaultLevel(track)} onChange={(v) => setLevel(track, v)} />
       <span className="mix-ms">
@@ -192,11 +227,11 @@ export function TrackFxPanel() {
   const track = useStore((s) => s.focus);
   const dly = useStore((s) => s.patterns[s.pattern].tracks[track].dly);
   const rev = useStore((s) => s.patterns[s.pattern].tracks[track].rev);
-  const spec = TRACKS[track];
+  const spec = useProfile(track);
   const beat = dly.mode === 1;
   const divN = BEAT_DIVISIONS.length;
   return (
-    <div className="trackfx" style={accentStyle(track)}>
+    <div className="trackfx" style={accentOf(spec)}>
       <header className="panel-title">
         <span className="dot" />
         <h2>TRACK FX</h2>

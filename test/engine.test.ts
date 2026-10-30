@@ -2,31 +2,47 @@ import { describe, expect, it } from "vitest";
 import { ARP_RATES, Arpeggiator, arpIndex, arpPool, normalizeArp, type ArpDirection, type ArpSettings } from "../src/engine/arp";
 import { baseValues, layeredTarget, manglerTarget, PUNCHES, sweepLevel } from "../src/engine/mangler";
 import { BEAT_DIVISIONS, freeDelaySeconds } from "../src/engine/trackfx";
-import { KITS, kitSounds, BASS_PRESETS, synthSound } from "../src/engine/presets";
-import { defaultSound, normToUnits, TRACKS, unitsToNorm, noteName } from "../src/engine/spec";
+import { ALL_VOICES, defaultRig, defaultSlotSound, ENGINES, ENGINE_KNOBS, SLOT_KNOBS, slotControls, trackProfile } from "../src/engine/catalogue";
+import { DEFAULT_SAMPLES } from "../src/engine/samples";
+import { normToUnits, TRACKS, unitsToNorm, noteName } from "../src/engine/spec";
 import { isInScale, defaultScale, isChromatic, normalizeScale, notesInRange, rootAtOrAbove, rootAtOrBelow, SCALE_PRESETS, SCALES, withPreset, withRoot } from "../src/engine/scale";
-import { demoPattern, FX_LANES, newPattern, pickWriteLane, randomizeTrack } from "../src/engine/state";
+import { DEFAULT_RIG, demoPattern, FX_LANES, newPattern, pickWriteLane, randomizeTrack } from "../src/engine/state";
 
 describe("control mapping", () => {
   it("round-trips every control across its range", () => {
-    for (const t of TRACKS) for (const c of t.controls) for (const n of [0, 0.25, 0.5, 1]) {
+    for (const v of ALL_VOICES) for (const { control: c } of slotControls(v)) for (const n of [0, 0.25, 0.5, 1]) {
       const back = unitsToNorm(c, normToUnits(c, n));
       expect(back).toBeCloseTo(c.steps ? Math.round(n * (c.steps.length - 1)) / (c.steps.length - 1) : n, 5);
     }
   });
-  it("keeps every default and preset inside its sweet-spot range", () => {
-    for (const t of TRACKS) for (const c of t.controls) {
-      expect(c.def).toBeGreaterThanOrEqual(c.lo - 1e-9);
-      expect(c.def).toBeLessThanOrEqual(c.hi + 1e-9);
+  it("keeps every default inside its sweet-spot range", () => {
+    for (const v of ALL_VOICES) {
+      for (const { control: c } of slotControls(v)) {
+        expect(c.def).toBeGreaterThanOrEqual(c.lo - 1e-9);
+        expect(c.def).toBeLessThanOrEqual(c.hi + 1e-9);
+      }
+      const sound = defaultSlotSound(v);
+      expect(sound).toHaveLength(SLOT_KNOBS);
+      for (const x of sound) expect(x >= 0 && x <= 1).toBe(true);
     }
-    for (const s of defaultSound(TRACKS[0])) expect(s).toBeGreaterThanOrEqual(0);
-    for (const k of KITS) for (const s of kitSounds(k).flat()) expect(s).toBeGreaterThanOrEqual(0);
-    for (const p of BASS_PRESETS) expect(synthSound(6, p)).toHaveLength(6);
   });
-  it("has the 6 + 1 + 1 track layout with at most 5 controls each", () => {
+  it("keeps the catalogue to nine names and the knobs to what a slot has room for", () => {
+    expect(ENGINES.length).toBeLessThanOrEqual(9);
+    expect(new Set(ENGINES.map((e) => e.id)).size).toBe(ENGINES.length);
+    for (const v of ALL_VOICES) expect(v.controls.length).toBeLessThanOrEqual(ENGINE_KNOBS);
+  });
+  it("starts with eight tracks, two acid tracks, and layered slots", () => {
     expect(TRACKS).toHaveLength(8);
-    expect(TRACKS.filter((t) => t.role === "drum")).toHaveLength(6);
-    for (const t of TRACKS) expect(t.controls.length).toBeLessThanOrEqual(t.role === "bass" ? 6 : 5);
+    expect(DEFAULT_RIG).toHaveLength(8);
+    expect(DEFAULT_RIG.filter((tr) => tr.some((sl) => sl.engine === "acid"))).toHaveLength(2);
+    expect(DEFAULT_RIG.filter((tr) => tr[0].engine !== "off" && tr[1].engine !== "off").length).toBeGreaterThanOrEqual(3);
+    expect(defaultRig(DEFAULT_SAMPLES)).toEqual(DEFAULT_RIG);
+  });
+  it("derives a track's role from its slots, and a slot's note range from its lead voice", () => {
+    expect(trackProfile(DEFAULT_RIG, 0).melodic).toBe(false); // kick + sample: pads
+    expect(trackProfile(DEFAULT_RIG, 5)).toMatchObject({ melodic: true, role: "bass", rootMidi: 33, noteLo: 24, noteHi: 59 });
+    expect(trackProfile(DEFAULT_RIG, 6).melodic).toBe(true); // acid + sample is melodic: the sample follows the notes
+    expect(trackProfile(DEFAULT_RIG, 7)).toMatchObject({ melodic: true, role: "tone" });
   });
   it("names notes with C1 = MIDI 24", () => {
     expect(noteName(24)).toBe("C1");
@@ -151,14 +167,14 @@ describe("patterns", () => {
   it("randomize stays inside the track's note range and pattern length", () => {
     const p = newPattern();
     p.length = 32;
-    randomizeTrack(p, 6, () => 0.3);
-    for (const s of p.tracks[6].steps) if (s.on) expect(s.note).toBeGreaterThanOrEqual(24);
-    for (const s of p.tracks[6].steps.slice(32)) expect(s.on).toBe(false);
+    randomizeTrack(p, 5, DEFAULT_RIG, () => 0.3);
+    for (const s of p.tracks[5].steps) if (s.on) expect(s.note).toBeGreaterThanOrEqual(24);
+    for (const s of p.tracks[5].steps.slice(32)) expect(s.on).toBe(false);
   });
   it("demo groove has a kick and bass line", () => {
     const d = demoPattern();
     expect(d.tracks[0].steps.filter((s) => s.on).length).toBe(4);
-    expect(d.tracks[6].steps.some((s) => s.slide)).toBe(true);
+    expect(d.tracks[5].steps.some((s) => s.slide)).toBe(true);
   });
 });
 
@@ -189,9 +205,9 @@ describe("scales", () => {
 describe("randomize follows the project scale", () => {
   it("only writes in-scale notes", () => {
     const key = { root: 2, scale: "minor", preset: "" };
-    for (const track of [6, 7]) {
+    for (const track of [5, 6, 7]) {
       const p = newPattern();
-      randomizeTrack(p, track, Math.random, key);
+      randomizeTrack(p, track, DEFAULT_RIG, Math.random, key);
       const on = p.tracks[track].steps.filter((s) => s.on);
       expect(on.length).toBeGreaterThan(0);
       for (const s of on) expect(isInScale(key, s.note)).toBe(true);

@@ -2,10 +2,10 @@
 // audition sounds. No React here.
 import { normalizeArp, type ArpSettings } from "./arp";
 import { controller } from "./controller";
+import { defaultSlotSound, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
-import { kitSounds, KITS, presetsFor, synthSound } from "./presets";
-import { hasDistortion, TRACKS } from "./spec";
-import { clearTrackSteps, GATES, newPattern, PAGE, randomizeTrack } from "./state";
+import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
+import { clearTrackSteps, GATES, newPattern, PAGE, randomizeTrack, type Pattern } from "./state";
 import { BEAT_DIVISIONS, type DelaySend, type ReverbSend } from "./trackfx";
 import { editPattern, getState, setState } from "./store";
 
@@ -18,9 +18,8 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 export function tapStep(track: number, step: number): void {
   const st = getState();
   if (st.plock) return selectLockStep(track, step);
-  const spec = TRACKS[track];
   const cur = st.patterns[st.pattern].tracks[track].steps[step];
-  if (spec.role === "drum") {
+  if (!trackProfile(st.rig, track).melodic) {
     editPattern((p) => {
       const s = p.tracks[track].steps[step];
       s.on = !s.on;
@@ -44,8 +43,7 @@ export function tapStep(track: number, step: number): void {
 /** Long-press a step: accent a drum hit; select (and place) a melodic step for editing. */
 export function holdStep(track: number, step: number): void {
   if (getState().plock) return selectLockStep(track, step);
-  const spec = TRACKS[track];
-  if (spec.role === "drum") {
+  if (!trackProfile(getState().rig, track).melodic) {
     editPattern((p) => {
       const s = p.tracks[track].steps[step];
       s.acc = s.on ? !s.acc : true;
@@ -88,7 +86,7 @@ export function setPlockMode(on: boolean): void {
   const st = getState();
   if (st.plock === on) return;
   // a drum step is only ever selected for locking: do not leave it looking selected in normal mode
-  setState({ plock: on, ...(!on && TRACKS[st.focus].role === "drum" ? { selStep: -1 } : {}) });
+  setState({ plock: on, ...(!on && !trackProfile(st.rig, st.focus).melodic ? { selStep: -1 } : {}) });
 }
 
 /** In P-LOCK mode a tap only selects the step (empty or not): nothing is added, removed or sounded differently. */
@@ -109,14 +107,14 @@ export function setLockable(track: number, id: string, value: number): void {
     editPattern((pat) => setLock(pat.tracks[track].steps[st.selStep], id, clamp01(value)));
     return;
   }
-  if (p.target.kind === "sound") setSound(track, p.target.control, value);
+  if (p.target.kind === "sound") setSound(track, p.target.slot, p.target.control, value);
   else if (p.target.kind === "dist") setDistortion(track, value);
   else if (p.target.send === "dly") setDelay(track, { send: value });
   else setReverb(track, { send: value });
 }
 
-/** A sound knob moved: see `setLockable`. */
-export const setSoundControl = (track: number, control: number, value: number): void => setLockable(track, soundParam(track, control).id, value);
+/** A sound knob of a slot moved: see `setLockable`. */
+export const setSoundControl = (track: number, slot: 0 | 1, at: number, value: number): void => setLockable(track, soundParam(track, slot, at).id, value);
 
 /** Remove every lock from a step; the step and the base sound stay as they are. */
 export function clearStepLocks(track: number, step: number): void {
@@ -125,12 +123,78 @@ export function clearStepLocks(track: number, step: number): void {
 
 // --- sound / mix ---------------------------------------------------------------------------------
 
-export function setSound(track: number, control: number, value: number): void {
-  editPattern((p) => {
-    p.tracks[track].sound[control] = clamp01(value);
-    p.tracks[track].preset = "";
+export function setSound(track: number, slot: 0 | 1, at: number, value: number): void {
+  editPattern((p) => { p.tracks[track].slots[slot][at] = clamp01(value); });
+}
+
+// --- slots: which engine is where ------------------------------------------------------------------
+
+/** Which slot of the focused track the sound panel edits. */
+export function setSlotTab(slot: 0 | 1): void {
+  setState({ slot });
+}
+
+/** Put `next` in a slot. Everything that belonged to what was there goes with it, in every pattern: the slot's knobs go back to the new
+ * engine's defaults, steps lose their locks on that slot, and if the track stops or starts being melodic its steps and arp follow. The
+ * other slot is not touched. */
+function replaceSlot(track: number, slot: 0 | 1, next: SlotRig, keep?: (at: number) => boolean): void {
+  const st = getState();
+  const before = trackProfile(st.rig, track);
+  const rig: Rig = st.rig.map((tr, t) => (t !== track ? tr : slot === 0 ? [next, tr[1]] : [tr[0], next] as const));
+  const after = trackProfile(rig, track);
+  const fresh = defaultSlotSound(after.voices[slot]);
+  const lockPrefix = `slot.${slot === 0 ? "a" : "b"}.`;
+  const notesMove = before.melodic !== after.melodic || before.lead !== after.lead;
+  const patterns = st.patterns.map((p): Pattern => ({
+    ...p,
+    tracks: p.tracks.map((tp, t) => {
+      if (t !== track) return tp;
+      const sound = tp.slots[slot].map((v, at) => (keep?.(at) ? v : fresh[at]));
+      const slots: [number[], number[]] = slot === 0 ? [sound, tp.slots[1]] : [tp.slots[0], sound];
+      const steps = tp.steps.map((s) => {
+        const locks = s.parameterLocks && Object.fromEntries(Object.entries(s.parameterLocks).filter(([id]) => !id.startsWith(lockPrefix)));
+        const hasLocks = !!locks && Object.keys(locks).length > 0;
+        const note = !notesMove ? s.note : !after.melodic ? after.defaultNote : Math.min(after.noteHi, Math.max(after.noteLo, before.melodic ? s.note : after.defaultNote));
+        if (note === s.note && hasLocks === !!s.parameterLocks && (!locks || Object.keys(locks).length === Object.keys(s.parameterLocks!).length)) return s;
+        const { parameterLocks: _drop, ...rest } = s;
+        return { ...rest, note, ...(after.melodic ? {} : { slide: false }), ...(hasLocks ? { parameterLocks: locks } : {}) };
+      });
+      return { ...tp, slots, steps };
+    }),
+  }));
+  setState({
+    rig, patterns, selStep: -1,
+    ...(after.melodic ? {} : { arp: st.arp.map((a, t) => (t === track && a.on ? { ...a, on: false } : a)) }),
   });
 }
+
+/** Choose a slot's engine (OFF empties it). `sample` is the library sample a new SAMPLE slot starts on. */
+export function setSlotEngine(track: number, slot: 0 | 1, engine: EngineId, sample = getState().library[0]?.id ?? ""): void {
+  const cur = getState().rig[track][slot];
+  if (cur.engine === engine) return;
+  replaceSlot(track, slot, { engine, variant: engine === "drum" ? "kick" : engine === "sample" ? sample : "" });
+  controller.audition(track);
+}
+
+/** Choose the drum voice of a DRUM slot (its knobs are those of the new voice). */
+export function setDrumVoice(track: number, slot: 0 | 1, variant: string): void {
+  const cur = getState().rig[track][slot];
+  if (cur.engine !== "drum" || cur.variant === variant || !(DRUM_VOICE_KEYS as readonly string[]).includes(variant)) return;
+  replaceSlot(track, slot, { engine: "drum", variant });
+  controller.audition(track);
+}
+
+/** Choose the shared sample of a SAMPLE slot. The slot's mode, level and filter stay; its window goes back to the whole sample (the new one
+ * is a different length, so the old START/END mean nothing to it). */
+export function setSlotSample(track: number, slot: 0 | 1, id: string): void {
+  const cur = getState().rig[track][slot];
+  if (cur.engine !== "sample" || cur.variant === id) return;
+  replaceSlot(track, slot, { engine: "sample", variant: id }, (at) => at !== SAMPLE_CONTROLS.start && at !== SAMPLE_CONTROLS.end);
+  controller.audition(track);
+}
+
+/** True when `voiceOf` knows the slot (used by the UI to tell an empty slot from a filled one). */
+export const slotFilled = (slot: SlotRig): boolean => voiceOf(slot) !== undefined;
 
 export function setLevel(track: number, value: number): void {
   editPattern((p) => { p.tracks[track].level = clamp01(value); });
@@ -155,9 +219,8 @@ export function setReverb(track: number, patch: Partial<ReverbSend>): void {
   });
 }
 
-/** A synth's distortion amount (0..1). Only the synths have the insert: any other track is left alone. */
+/** A track's distortion amount (0..1): the INSERT FX. */
 export function setDistortion(track: number, value: number): void {
-  if (!hasDistortion(track)) return;
   editPattern((p) => { p.tracks[track].dist = clamp01(value); });
 }
 
@@ -200,29 +263,6 @@ export function setSweep(index: number): void {
   editPattern((p) => { p.mangler.sweep = index; });
 }
 
-export function loadKit(index: number): void {
-  const kit = KITS[index];
-  const sounds = kitSounds(kit);
-  editPattern((p) => {
-    sounds.forEach((sound, t) => {
-      p.tracks[t].sound = sound;
-      p.tracks[t].preset = kit.name;
-    });
-  });
-  controller.audition(0);
-}
-
-export function loadSynthPreset(track: number, index: number): void {
-  const preset = presetsFor(track)[index];
-  if (!preset) return;
-  const sound = synthSound(track, preset);
-  editPattern((p) => {
-    p.tracks[track].sound = sound;
-    p.tracks[track].preset = preset.name;
-  });
-  controller.audition(track);
-}
-
 // --- pattern -------------------------------------------------------------------------------------
 
 /** Set the pattern length. With `copyPage`, newly added bars are filled with a copy of that page. */
@@ -256,19 +296,19 @@ export function setLastStep(track: number, last: number): void {
 }
 
 export function clearTrack(track: number): void {
-  editPattern((p) => clearTrackSteps(p, track));
+  editPattern((p) => clearTrackSteps(p, track, getState().rig));
   setState({ selStep: -1 });
 }
 
 export function randomize(track: number): void {
-  editPattern((p) => randomizeTrack(p, track, Math.random, getState().scale));
+  editPattern((p) => randomizeTrack(p, track, getState().rig, Math.random, getState().scale));
   setState({ selStep: -1 });
 }
 
 export function clearPattern(): void {
   const st = getState();
   const patterns = st.patterns.slice();
-  patterns[st.pattern] = newPattern();
+  patterns[st.pattern] = newPattern(st.rig);
   setState({ patterns, selStep: -1 });
 }
 
@@ -280,4 +320,45 @@ export function removeChainEntry(index: number): void {
 
 export function clearChain(): void {
   setState({ chain: [], chainOn: false });
+}
+
+// --- the shared sample library ---------------------------------------------------------------------
+
+/** Read the user's imported samples from storage into the library (the factory set is always there). */
+export async function refreshLibrary(): Promise<void> {
+  setState({ library: [...FACTORY_SAMPLES, ...(await loadUserSamples())] });
+}
+
+/** Add an audio file to the library. Resolves to its id, or rejects with a message for the user. */
+export async function importSampleFile(file: File): Promise<string> {
+  if (file.size > 12 * 1024 * 1024) throw new Error("That file is too large (12 MB at most).");
+  const bytes = await file.arrayBuffer();
+  try {
+    // decoded once here so a file the browser cannot read is refused now, not at the first note
+    await new AudioContext().decodeAudioData(bytes.slice(0));
+  } catch {
+    throw new Error("That file could not be read as audio.");
+  }
+  const info = await importSample(file.name, bytes, getState().library);
+  setState((s) => ({ library: [...s.library, info] }));
+  void controller.engine?.ensureSample(info.id);
+  return info.id;
+}
+
+/** Whether any slot of the project plays library sample `id`. */
+export const sampleInUse = (id: string): boolean => getState().rig.some((tr) => tr.some((sl) => sl.engine === "sample" && sl.variant === id));
+
+/** Remove an imported sample. Refused (false) while a slot uses it or for a factory sample. */
+export async function deleteSample(id: string): Promise<boolean> {
+  const info = getState().library.find((x) => x.id === id);
+  if (!info || info.factory || sampleInUse(id)) return false;
+  await removeUserSample(id);
+  setState((s) => ({ library: s.library.filter((x) => x.id !== id) }));
+  controller.engine?.unloadSample(id);
+  return true;
+}
+
+/** Audition a library sample (the sample modal's play button). */
+export function previewSample(id: string): void {
+  void controller.engine?.previewSample(id);
 }

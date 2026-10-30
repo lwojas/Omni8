@@ -6,12 +6,12 @@
 // So what the host plays is by construction what the page would have scheduled.
 import type { InstrumentNoteParams } from "webdsp";
 import { Arpeggiator, type ArpSettings } from "./arp";
-import { NUM_TRACKS, TRACKS } from "./spec";
+import { trackProfile, type Rig } from "./catalogue";
+import { NUM_TRACKS } from "./spec";
 import { DEFAULT_GATE, GATES, trackLast, trackStepAt, type Pattern } from "./state";
 
 export const VEL_NORMAL = 0.7;
 export const VEL_ACCENT = 1;
-export const MELODIC = TRACKS.filter((t) => t.role !== "drum").map((t) => t.id);
 
 /** A step's gate length in steps (saves from before gates existed have none; so can a stale index). */
 export const gateSteps = (gate: number | undefined): number => (GATES[gate ?? DEFAULT_GATE] ?? GATES[DEFAULT_GATE]).len;
@@ -25,6 +25,8 @@ export interface StepNote {
 }
 
 export interface StepClock {
+  /** What is in each track's slots: a track plays as a drum or a melodic part by what its slots are (see `trackProfile`). */
+  rig: Rig;
   /** Seconds in one 16th step. */
   stepDur: number;
   /** Project swing, 0.5 (straight) .. 0.75. */
@@ -39,7 +41,7 @@ export class StepCompiler {
    * as the song step count at which each is released. */
   private seqHolds = new Map<number, Array<{ note: number; end: number }>>();
 
-  constructor(readonly arps: Map<number, Arpeggiator> = new Map(MELODIC.map((t) => [t, new Arpeggiator()]))) {}
+  constructor(readonly arps: Map<number, Arpeggiator> = new Map(Array.from({ length: NUM_TRACKS }, (_, t) => [t, new Arpeggiator()]))) {}
 
   /** The grid restarted (transport start/stop): drop the sequencer's holds and line the arps up again. */
   realign(): void {
@@ -76,7 +78,7 @@ export class StepCompiler {
 
     for (let track = 0; track < NUM_TRACKS; track++) {
       if (!include(track)) continue;
-      const spec = TRACKS[track];
+      const profile = trackProfile(clock.rig, track);
       const tp = pat.tracks[track];
       // a track wraps at its own last step; swing and the arp grid stay on the shared pattern step
       const len = trackLast(pat, track);
@@ -86,8 +88,8 @@ export class StepCompiler {
       const s = tp.steps[ts];
       this.releaseHolds(track, stepCount);
       if (!s.on) continue;
-      if (spec.role === "drum") {
-        emit({ track, params: { time: t, velocity: s.acc ? VEL_ACCENT : VEL_NORMAL, chokeGroup: spec.chokeGroup } });
+      if (!profile.melodic) {
+        emit({ track, params: { time: t, velocity: s.acc ? VEL_ACCENT : VEL_NORMAL } });
         continue;
       }
       lit.push([track, s.note]);
@@ -108,7 +110,7 @@ export class StepCompiler {
         params: {
           time: t,
           velocity: s.acc ? VEL_ACCENT : VEL_NORMAL,
-          pitch: s.note - (spec.rootMidi ?? 0) + 12 * tp.oct,
+          pitch: s.note - profile.rootMidi + 12 * tp.oct,
           duration: holdsIntoNext ? nextStart - t + 0.015 : stepDur * gateSteps(s.gate),
           tie: s.slide && prev.on,
         },
@@ -122,7 +124,7 @@ export class StepCompiler {
 
   /** The arp notes of every track that has them, for the step window starting at `t`. `gridPos` is the step's position on
    * the grid, or per track (the first note lines up with the rate on it). `pat` supplies the octave. */
-  arpNotes(t: number, stepDur: number, gridPos: number | ((track: number) => number), pat: Pattern, clock: Pick<StepClock, "arp" | "rnd">, emit: (n: StepNote) => void): void {
+  arpNotes(t: number, stepDur: number, gridPos: number | ((track: number) => number), pat: Pattern, clock: Pick<StepClock, "arp" | "rnd" | "rig">, emit: (n: StepNote) => void): void {
     for (const [track, arp] of this.arps) {
       if (!arp.active) continue;
       const cfg = clock.arp[track];
@@ -130,13 +132,13 @@ export class StepCompiler {
         arp.clear();
         continue;
       }
-      const spec = TRACKS[track];
+      const rootMidi = trackProfile(clock.rig, track).rootMidi;
       const oct = pat.tracks[track].oct;
       for (const e of arp.advance(cfg, typeof gridPos === "number" ? gridPos : gridPos(track), clock.rnd)) {
         const time = t + e.offset * stepDur;
         emit({
           track,
-          params: { time, velocity: e.velocity, pitch: e.note - (spec.rootMidi ?? 0) + 12 * oct, duration: e.length * stepDur },
+          params: { time, velocity: e.velocity, pitch: e.note - rootMidi + 12 * oct, duration: e.length * stepDur },
           flashMs: { note: e.note, ms: Math.min(180, e.length * stepDur * 1000) },
         });
       }

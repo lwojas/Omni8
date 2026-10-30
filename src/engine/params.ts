@@ -18,12 +18,13 @@
 //   norm  0..1 continuous      int  min..max whole numbers      bool  0 or 1
 import { setArp, setLevel, setLockable, setMute, setPunchSend, setSolo } from "./actions";
 import { controller } from "./controller";
-import { effectiveValue, lockParam, lockStep } from "./plock";
+import { effectiveValue, lockParam, lockStep, soundLockId } from "./plock";
 import { currentSource, withSource, type ParamSource } from "./source";
-import { defaultLevel, NUM_PATTERNS, type AppState, type TrackPattern } from "./state";
+import { defaultLevel, DEFAULT_RIG, NUM_PATTERNS, type AppState, type TrackPattern } from "./state";
 import { defaultDelaySend, defaultReverbSend } from "./trackfx";
-import { defaultSound, TRACKS } from "./spec";
-import { observe } from "./store";
+import { SLOT_KNOBS, SLOT_NAMES, defaultSlotSound, trackProfile } from "./catalogue";
+import { TRACKS } from "./spec";
+import { getState, observe } from "./store";
 
 export type ParamKind = "norm" | "int" | "bool";
 
@@ -59,7 +60,8 @@ function build(): ParamDef[] {
   const defs: ParamDef[] = [];
   for (const spec of TRACKS) {
     const t = spec.id;
-    const name = spec.name;
+    // the manifest is fixed (a DAW binds these ids), so the labels are too: what a knob does depends on the engine in the slot
+    const name = `Track ${t + 1}`;
     defs.push(
       { id: idOf(t, "volume"), label: `${name} volume`, kind: "norm", min: 0, max: 1, def: defaultLevel(t), get: (s) => tp(s, t).level, set: (v) => setLevel(t, v) },
       { id: idOf(t, "mute"), label: `${name} mute`, kind: "bool", min: 0, max: 1, def: 0, get: (s) => (s.mutes[t] ? 1 : 0), set: (v) => setMute(t, v >= 1) },
@@ -68,29 +70,19 @@ function build(): ParamDef[] {
       { id: idOf(t, "reverbSend"), label: `${name} reverb send`, kind: "norm", min: 0, max: 1, def: defaultReverbSend(t), get: (s) => shown(s, t, "fx.reverbSend"), set: (v) => setLockable(t, "fx.reverbSend", v) },
       { id: idOf(t, "punchSend"), label: `${name} punch FX send`, kind: "bool", min: 0, max: 1, def: 1, get: (s) => (tp(s, t).punch ? 1 : 0), set: (v) => setPunchSend(t, v >= 1) },
     );
-    if (lockParam(t, "fx.distortion")) {
-      defs.push({ id: idOf(t, "distortion"), label: `${name} distortion`, kind: "norm", min: 0, max: 1, def: 0, get: (s) => shown(s, t, "fx.distortion"), set: (v) => setLockable(t, "fx.distortion", v) });
-    }
-    if (spec.role !== "drum") {
-      defs.push({ id: idOf(t, "arp"), label: `${name} arpeggiator`, kind: "bool", min: 0, max: 1, def: 0, get: (s) => (s.arp[t].on ? 1 : 0), set: (v) => setArp(t, { on: v >= 1 }) });
-    }
-    const sound = defaultSound(spec);
-    spec.controls.forEach((c, i) => {
-      const id = idOf(t, `sound.${c.key}`);
-      const lockId = `instrument.${c.key}`;
-      const label = `${name} ${c.label.toLowerCase()}`;
-      if (c.steps) {
-        // a stepped control is stored normalised but is a choice: expose the index
-        const top = c.steps.length - 1;
+    defs.push({ id: idOf(t, "distortion"), label: `${name} distortion`, kind: "norm", min: 0, max: 1, def: 0, get: (s) => shown(s, t, "fx.distortion"), set: (v) => setLockable(t, "fx.distortion", v) });
+    defs.push({ id: idOf(t, "arp"), label: `${name} arpeggiator`, kind: "bool", min: 0, max: 1, def: 0, get: (s) => (s.arp[t].on ? 1 : 0), set: (v) => setArp(t, { on: v >= 1 && trackProfile(getState().rig, t).melodic }) });
+    // the knobs of the two slots, by position: `track.N.a.K` is the K-th knob of slot A whatever engine is in it (the last two are LEVEL and FILTER)
+    for (const slot of [0, 1] as const) {
+      for (let at = 0; at < SLOT_KNOBS; at++) {
+        const lockId = soundLockId(slot, at);
+        const sound = defaultSlotSound(trackProfile(DEFAULT_RIG, t).voices[slot]);
         defs.push({
-          id, label, kind: "int", min: 0, max: top, def: Math.round(sound[i] * top), labels: c.steps,
-          get: (s) => Math.round(shown(s, t, lockId) * top),
-          set: (v) => setLockable(t, lockId, v / top),
+          id: idOf(t, `${SLOT_NAMES[slot].toLowerCase()}.${at + 1}`), label: `${name} slot ${SLOT_NAMES[slot]} knob ${at + 1}`, kind: "norm", min: 0, max: 1, def: sound[at],
+          get: (s) => shown(s, t, lockId), set: (v) => setLockable(t, lockId, v),
         });
-      } else {
-        defs.push({ id, label, kind: "norm", min: 0, max: 1, def: sound[i], get: (s) => shown(s, t, lockId), set: (v) => setLockable(t, lockId, v) });
       }
-    });
+    }
   }
   defs.push({
     id: "pattern.select", label: "Pattern", kind: "int", min: 0, max: NUM_PATTERNS - 1, def: 0,

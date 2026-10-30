@@ -1,9 +1,9 @@
 // The arpeggiator's UI: a compact ARP button (opens the settings) beside an on/off switch. One
 // implementation serves every track; the track only picks which settings it edits.
-import { useRef, useState, type CSSProperties } from "react";
+import { useRef, useState } from "react";
 import { ARP_DIRECTIONS, ARP_MAX_OCTAVES, ARP_RATES } from "../engine/arp";
 import { setArp } from "../engine/actions";
-import { TRACKS } from "../engine/spec";
+import { accentOf, useProfile } from "./profile";
 import { useStore } from "../engine/store";
 import { Knob } from "./controls";
 import { Modal } from "./Modal";
@@ -12,8 +12,9 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 function ArpSettingsForm({ track }: { track: number }) {
   const a = useStore((s) => s.arp[track]);
+  const profile = useProfile(track);
   return (
-    <div className="arp-form" style={{ "--acc": `var(${TRACKS[track].accent})` } as CSSProperties}>
+    <div className="arp-form" style={accentOf(profile)}>
       <button type="button" className="btn arp-power" data-active={a.on} aria-pressed={a.on} onClick={() => setArp(track, { on: !a.on })}>
         {a.on ? "ARP ON" : "ARP OFF"}
       </button>
@@ -58,17 +59,18 @@ function ArpSettingsForm({ track }: { track: number }) {
 /** ARP button + on/off switch for `track`, with the shared settings modal behind the button. */
 export function ArpControl({ track }: { track: number }) {
   const on = useStore((s) => s.arp[track].on);
+  const profile = useProfile(track);
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   return (
-    <span className="arp-ctl" style={{ "--acc": `var(${TRACKS[track].accent})` } as CSSProperties}>
+    <span className="arp-ctl" style={accentOf(profile)}>
       <button ref={btn} type="button" className="btn sm arp-open" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
         ARP
       </button>
       <button type="button" className="btn sm arp-toggle" data-active={on} aria-pressed={on} aria-label={`Arpeggiator ${on ? "on" : "off"}`} onClick={() => setArp(track, { on: !on })}>
         {on ? "ON" : "OFF"}
       </button>
-      <Modal open={open} title={`Arpeggiator · ${TRACKS[track].name}`} onClose={() => setOpen(false)} className="arp-modal">
+      <Modal open={open} title={`Arpeggiator · ${profile.name}`} onClose={() => setOpen(false)} className="arp-modal">
         <ArpSettingsForm track={track} />
       </Modal>
     </span>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FILE_EXT, PRODUCT, storageKey } from "../src/product";
 import { TRACKS } from "../src/engine/spec";
-import { defaultLevel, newTrackPattern } from "../src/engine/state";
+import { DEFAULT_RIG, defaultLevel, newTrackPattern } from "../src/engine/state";
 import { newDelay, newReverb } from "../src/engine/trackfx";
 
 describe("product identity", () => {
@@ -21,7 +21,7 @@ describe("per-track mix defaults (TrackSpec.mix)", () => {
   });
   it("feeds fresh patterns", () => {
     TRACKS.forEach((t, i) => {
-      const tp = newTrackPattern(i);
+      const tp = newTrackPattern(DEFAULT_RIG, i);
       expect(tp.level).toBe(t.mix.level);
       expect(defaultLevel(i)).toBe(t.mix.level);
       expect(newDelay(i).send).toBe(t.mix.delay);
@@ -29,8 +29,8 @@ describe("per-track mix defaults (TrackSpec.mix)", () => {
     });
   });
   it("matches the shipped values", () => {
-    expect(TRACKS.map((t) => t.mix.level)).toEqual([0.85, 0.75, 0.55, 0.55, 0.7, 0.6, 0.78, 0.62]);
-    expect(TRACKS.map((t) => t.mix.delay)).toEqual([0, 0.15, 0.12, 0.25, 0.3, 0.3, 0.1, 0.3]);
-    expect(TRACKS.map((t) => t.mix.reverb)).toEqual([0, 0.12, 0, 0, 0.18, 0.1, 0, 0.15]);
+    expect(TRACKS.map((t) => t.mix.level)).toEqual([0.85, 0.75, 0.55, 0.55, 0.6, 0.78, 0.72, 0.62]);
+    expect(TRACKS.map((t) => t.mix.delay)).toEqual([0, 0.15, 0.12, 0.25, 0.3, 0.1, 0.2, 0.3]);
+    expect(TRACKS.map((t) => t.mix.reverb)).toEqual([0, 0.12, 0, 0, 0.1, 0, 0.05, 0.2]);
   });
 });

@@ -8,7 +8,8 @@
 import { hostBeatAt, hostTimeAt, type HostTransport, type Sequence } from "webdsp";
 import type { Groovebox } from "./audio";
 import { baseLayout, cueLayout, nextBoundary, positionAt, steadySequence, transitionSequence, type Layout, type Song } from "./nativeseq";
-import { MELODIC } from "./stepcompile";
+import { trackProfile } from "./catalogue";
+import { NUM_TRACKS } from "./spec";
 import { getState, setState } from "./store";
 import { trackStepAt, type AppState } from "./state";
 
@@ -139,7 +140,8 @@ export class HostPlayback {
       const pos = positionAt(patterns, this.layoutAt(at), at);
       const pat = patterns[pos.pattern];
       const notes: Array<[number, number]> = [];
-      for (const track of MELODIC) {
+      for (let track = 0; track < NUM_TRACKS; track++) {
+        if (!trackProfile(getState().rig, track).melodic) continue;
         const s = pat.tracks[track].steps[trackStepAt(pat, track, pos.step, pos.run)];
         if (s.on) notes.push([track, s.note]);
       }
@@ -165,7 +167,7 @@ export class HostPlayback {
 
   onState(next: AppState, prev: AppState): void {
     const song =
-      next.patterns !== prev.patterns || next.mutes !== prev.mutes || next.solos !== prev.solos || next.arp !== prev.arp ||
+      next.patterns !== prev.patterns || next.rig !== prev.rig || next.mutes !== prev.mutes || next.solos !== prev.solos || next.arp !== prev.arp ||
       next.swing !== prev.swing || next.fxPlay !== prev.fxPlay || next.punch !== prev.punch;
     // Stopped, the project's own pattern or chain is what a start would play. Playing, the audible pattern moves `pattern`: not a change.
     const where = !this._playing && (next.pattern !== prev.pattern || next.chain !== prev.chain || next.chainOn !== prev.chainOn);
@@ -218,8 +220,8 @@ export class HostPlayback {
 
   private build(): Sequence | null {
     const st = getState();
-    const song: Song = { patterns: st.patterns, mutes: st.mutes, solos: st.solos, swing: st.swing, arp: st.arp, fxPlay: st.fxPlay, lanes: st.punch === 0 };
-    const ctx = { ids: this.gb.ids, clamp: this.gb.clampFx };
+    const song: Song = { rig: st.rig, patterns: st.patterns, mutes: st.mutes, solos: st.solos, swing: st.swing, arp: st.arp, fxPlay: st.fxPlay, lanes: st.punch === 0 };
+    const ctx = { ids: this.gb.ids, clamp: this.gb.clampFx, sampleOf: (id: string) => this.gb.sampleRuntimeId(id) };
     if (!this._playing || !this.t) return steadySequence(song, baseLayout(st), ctx);
     const beat = hostBeatAt(this.t, this.gb.now);
     this.commitIfPassed(beat);

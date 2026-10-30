@@ -1,7 +1,9 @@
 // The whole application state, and the pure functions that edit a pattern.
 // Nothing here touches audio or React.
 import { storageKey } from "../product";
-import { defaultSound, hasDistortion, NUM_TRACKS, TRACKS, BASS_TRACK, TONE_TRACK } from "./spec";
+import { NUM_TRACKS, TRACKS } from "./spec";
+import { defaultRig, defaultSlotSound, trackProfile, type Rig } from "./catalogue";
+import { DEFAULT_SAMPLES, FACTORY_SAMPLES, type SampleInfo } from "./samples";
 import { defaultArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { defaultScale, isChromatic, notesInRange, rootAtOrAbove, type ProjectScale } from "./scale";
@@ -45,22 +47,24 @@ export const GATES = [
 export const GATE_BUTTONS = [3, 4, 5, 1, 6, 2] as const;
 export const DEFAULT_GATE = 0;
 
+/** The starting rig (see catalogue.ts): what a new project has in its slots. */
+export const DEFAULT_RIG: Rig = defaultRig(DEFAULT_SAMPLES);
+
 export interface TrackPattern {
   steps: Step[];
-  /** Normalised 0..1 per control of the track's spec. */
-  sound: number[];
+  /** Normalised 0..1 knob values of slot A and slot B (`SLOT_KNOBS` each, laid out as in catalogue.ts). Which engine they drive is the
+   * project's rig, not the pattern's. */
+  slots: [number[], number[]];
   level: number;
   /** Track sends (mixing): delay and reverb. */
   dly: DelaySend;
   rev: ReverbSend;
-  /** Synths only (ACID, FM): the distortion insert's amount, 0..1 (0 = off; lockable). Absent on every other track. */
-  dist?: number;
+  /** The track's distortion insert (INSERT FX), 0..1 (0 = off; lockable). */
+  dist: number;
   /** Punch FX send gate: false keeps the track out of the punch section (neither fed nor taken over). */
   punch: boolean;
   /** Octave shift for melodic tracks. */
   oct: number;
-  /** Name of the preset last loaded into this track (cosmetic). */
-  preset: string;
   /** Last step (1-based, absolute across the bars): the track plays steps 1..last and wraps. Absent (older saves, and whenever the
    * pattern length is set) means the whole pattern. Steps past it keep their data, they just do not play. See `trackLast`. */
   last?: number;
@@ -130,6 +134,8 @@ export interface AppState {
   // persisted
   /** Name of the loaded or last-saved project; empty for an unsaved one. */
   projectName: string;
+  /** Which engine is in each slot of each track (see catalogue.ts). Project-wide, not per pattern. */
+  rig: Rig;
   patterns: Pattern[];
   chain: number[];
   chainOn: boolean;
@@ -141,6 +147,10 @@ export interface AppState {
   /** Arpeggiator settings per track (only the melodic tracks use theirs). */
   arp: ArpSettings[];
   // performance state
+  /** The shared sample library: the factory set, then the user's imports. Held outside the project (IndexedDB). */
+  library: readonly SampleInfo[];
+  /** Which slot of the focused track the sound panel edits. */
+  slot: 0 | 1;
   mutes: boolean[];
   solos: boolean[];
   focus: number;
@@ -181,28 +191,32 @@ export interface AppState {
 
 export const emptyStep = (note: number): Step => ({ on: false, note, acc: false, slide: false });
 
-export function newTrackPattern(track: number): TrackPattern {
-  const spec = TRACKS[track];
+/** A track's slot knobs at the defaults of the engines in `rig`. */
+export const defaultSlots = (rig: Rig, track: number): [number[], number[]] => {
+  const { voices } = trackProfile(rig, track);
+  return [defaultSlotSound(voices[0]), defaultSlotSound(voices[1])];
+};
+
+export function newTrackPattern(rig: Rig, track: number): TrackPattern {
   return {
-    steps: Array.from({ length: MAX_STEPS }, () => emptyStep(spec.defaultNote ?? 0)),
-    sound: defaultSound(spec),
+    steps: Array.from({ length: MAX_STEPS }, () => emptyStep(trackProfile(rig, track).defaultNote)),
+    slots: defaultSlots(rig, track),
     level: defaultLevel(track),
     dly: newDelay(track),
     rev: newReverb(track),
-    ...(hasDistortion(track) ? { dist: newDist() } : {}),
+    dist: newDist(),
     punch: true,
     oct: 0,
-    preset: "",
   };
 }
 
 // Starting fader level per track: `TRACKS[i].mix.level` (spec.ts).
 export const defaultLevel = (track: number) => TRACKS[track].mix.level;
 
-export function newPattern(): Pattern {
+export function newPattern(rig: Rig = DEFAULT_RIG): Pattern {
   return {
     length: 16,
-    tracks: Array.from({ length: NUM_TRACKS }, (_, i) => newTrackPattern(i)),
+    tracks: Array.from({ length: NUM_TRACKS }, (_, i) => newTrackPattern(rig, i)),
     fxLanes: Array.from({ length: FX_LANES }, newFxLane),
     mangler: defaultMangler(),
   };
@@ -227,20 +241,32 @@ const line = (p: Pattern, track: number, notes: Array<[step: number, note: numbe
   }
 };
 
-export function demoPattern(): Pattern {
-  const p = newPattern();
-  hits(p, 0, [0, 4, 8, 12], [0, 8]);
-  hits(p, 1, [4, 12], [12]);
+/** Set one knob of a slot by its position in the slot's sound array. */
+const knob = (p: Pattern, track: number, slot: 0 | 1, at: number, value: number) => { p.tracks[track].slots[slot][at] = value; };
+
+export function demoPattern(rig: Rig = DEFAULT_RIG): Pattern {
+  const p = newPattern(rig);
+  hits(p, 0, [0, 4, 8, 12], [0, 8]);        // kick + sub thump
+  hits(p, 1, [4, 12], [12]);                // snare + clap
   hits(p, 2, [0, 2, 4, 6, 8, 10, 12, 14, 15], [2, 10]);
   hits(p, 3, [6, 14]);
-  hits(p, 4, [4, 12, 13]);
-  hits(p, 5, [3, 7, 11, 14], [7]);
-  line(p, BASS_TRACK, [
+  hits(p, 4, [3, 7, 11, 14], [7]);          // rim + shaker
+  line(p, 5, [
     [0, 24, "a"], [2, 24], [3, 36, "s"], [6, 27, "a"], [8, 24], [10, 31, "s"], [11, 29], [14, 27, "a"], [15, 36, "s"],
   ]);
-  line(p, TONE_TRACK, [[0, 55], [3, 58], [7, 62, "a"], [10, 58], [12, 55]]);
-  // start with a bright kit and acid preset values (loaded by the presets module at boot)
-  p.tracks[TONE_TRACK].level = 0.55;
+  // the second acid: higher, tighter, an octave up and answering the first
+  line(p, 6, [[2, 36, "a"], [5, 39], [7, 43, "s"], [9, 36], [12, 41, "a"], [13, 39, "s"]]);
+  knob(p, 6, 0, 0, 0.62); // FILTER: more open
+  knob(p, 6, 0, 2, 0.22); // DECAY: shorter
+  knob(p, 6, 0, 4, 0.7);  // BITE
+  knob(p, 6, 1, 6, 0.3);  // the sample layer sits under the bass
+  knob(p, 6, 1, 3, 0.1);  // ... and is a short click
+  line(p, 7, [[0, 55], [3, 58], [7, 62, "a"], [10, 58], [12, 55]]);
+  p.tracks[7].level = 0.55;
+  knob(p, 0, 1, 6, 0.55); // the thump layer a little under the kick
+  knob(p, 1, 1, 6, 0.6);  // clap under the snare
+  knob(p, 4, 1, 6, 0.55); // shaker under the rim
+  knob(p, 7, 1, 6, 0.6);  // pad under the pluck
   return p;
 }
 
@@ -252,35 +278,36 @@ export function withPattern(p: Pattern, edit: (draft: Pattern) => void): Pattern
   return d;
 }
 
-export function clearTrackSteps(p: Pattern, track: number) {
-  const spec = TRACKS[track];
+export function clearTrackSteps(p: Pattern, track: number, rig: Rig = DEFAULT_RIG) {
+  const defaultNote = trackProfile(rig, track).defaultNote;
   for (const s of p.tracks[track].steps) {
     s.on = false;
     s.acc = false;
     s.slide = false;
     delete s.gate;
     delete s.parameterLocks;
-    s.note = spec.defaultNote ?? 0;
+    s.note = defaultNote;
   }
 }
 
 /** A quick, musical starting point for one track (the RND button). */
-export function randomizeTrack(p: Pattern, track: number, rnd: () => number = Math.random, key?: ProjectScale) {
-  const spec = TRACKS[track];
+export function randomizeTrack(p: Pattern, track: number, rig: Rig = DEFAULT_RIG, rnd: () => number = Math.random, key?: ProjectScale) {
+  const profile = trackProfile(rig, track);
   const len = p.length;
-  clearTrackSteps(p, track);
+  clearTrackSteps(p, track, rig);
   const steps = p.tracks[track].steps;
   const pick = <T,>(a: readonly T[]) => a[Math.floor(rnd() * a.length)];
-  if (spec.role === "drum") {
-    const density: Record<number, number[]> = {
-      0: [0.9, 0.05, 0.35, 0.05],
-      1: [0, 0.8, 0.05, 0.8],
-      2: [0.5, 0.9, 0.5, 0.9],
-      3: [0.02, 0.45, 0.02, 0.2],
-      4: [0, 0.6, 0.05, 0.5],
-      5: [0.2, 0.3, 0.3, 0.35],
+  if (!profile.melodic) {
+    // by what is in the track's first slot; anything else gets an even scatter
+    const density: Record<string, number[]> = {
+      "drum:kick": [0.9, 0.05, 0.35, 0.05],
+      "drum:snare": [0, 0.8, 0.05, 0.8],
+      "drum:clap": [0, 0.6, 0.05, 0.5],
+      "drum:chat": [0.5, 0.9, 0.5, 0.9],
+      "drum:ohat": [0.02, 0.45, 0.02, 0.2],
+      "drum:tom": [0.2, 0.3, 0.3, 0.35],
     };
-    const d = density[track] ?? [0.3, 0.3, 0.3, 0.3];
+    const d = density[profile.voices[0]?.key ?? ""] ?? [0.3, 0.3, 0.3, 0.35];
     for (let i = 0; i < len; i++) {
       const beatPos = i % 4;
       steps[i].on = rnd() < d[beatPos];
@@ -288,16 +315,16 @@ export function randomizeTrack(p: Pattern, track: number, rnd: () => number = Ma
     }
     return;
   }
-  const lo = spec.noteLo ?? 0;
-  const hi = spec.noteHi ?? 127;
+  const lo = profile.noteLo;
+  const hi = profile.noteHi;
   let notes: number[];
   if (key && !isChromatic(key)) {
     // the project's scale over one octave from its root, with the root favoured
-    const root = rootAtOrAbove(key, lo + (spec.role === "bass" ? 0 : 12));
+    const root = rootAtOrAbove(key, lo + (profile.role === "bass" ? 0 : 12));
     const inRange = notesInRange(key, root, root + 12).filter((n) => n >= lo && n <= hi);
     notes = inRange.length ? [root, root, ...inRange] : [root];
   } else {
-    const base = spec.role === "bass" ? 24 : 48;
+    const base = profile.role === "bass" ? 24 : 48;
     notes = [0, 0, 3, 5, 7, 10, 12, 0, 7].map((o) => Math.min(hi, Math.max(lo, base + o)));
   }
   let prev = false;
@@ -318,7 +345,9 @@ export function randomizeTrack(p: Pattern, track: number, rnd: () => number = Ma
 export function initialState(): AppState {
   return {
     projectName: "",
-    patterns: Array.from({ length: NUM_PATTERNS }, (_, i) => (i === 0 ? demoPattern() : newPattern())),
+    rig: DEFAULT_RIG,
+    library: FACTORY_SAMPLES,
+    patterns: Array.from({ length: NUM_PATTERNS }, (_, i) => (i === 0 ? demoPattern(DEFAULT_RIG) : newPattern(DEFAULT_RIG))),
     chain: [],
     chainOn: false,
     bpm: 128,
@@ -328,7 +357,8 @@ export function initialState(): AppState {
     arp: Array.from({ length: NUM_TRACKS }, defaultArp),
     mutes: new Array(NUM_TRACKS).fill(false),
     solos: new Array(NUM_TRACKS).fill(false),
-    focus: BASS_TRACK,
+    focus: 5,
+    slot: 0,
     page: 0,
     selStep: -1,
     follow: false,

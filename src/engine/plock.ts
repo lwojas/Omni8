@@ -8,14 +8,15 @@
 // so changing the base moves every step without a lock, and clearing a lock puts the step back on
 // the base. Pure: no store, no audio.
 //
-// A lockable parameter is a `LockParam`; today the track's sound controls are the only ones
-// (`instrument.<control key>`, normalised 0..1). Others (track level, sends, ...) opt in by being
-// returned from `lockParams`, which the sequencer, the UI and playback all go through.
-import { hasDistortion, TRACKS } from "./spec";
+// A lockable parameter is a `LockParam`: a position in one of the track's two slot sounds (`slot.a.3`, normalised 0..1), a send, or
+// the distortion. The ids are positions, not engine control names, so they are the same whatever engine is in the slot (a lock on a
+// slot whose engine changes is dropped with the change, see actions.ts). Others opt in by being returned from `lockParams`, which the
+// sequencer, the UI and playback all go through.
+import { SLOT_KNOBS, SLOT_NAMES } from "./catalogue";
 import type { AppState, Step, TrackPattern } from "./state";
 
-/** What a lock drives: one of the track's sound controls, one of its FX sends, or a synth's distortion insert. */
-export type LockTarget = { kind: "sound"; control: number } | { kind: "send"; send: "dly" | "rev" } | { kind: "dist" };
+/** What a lock drives: a knob of one slot (`control` is its position in the slot's sound array), one of the track's FX sends, or its distortion insert. */
+export type LockTarget = { kind: "sound"; slot: 0 | 1; control: number } | { kind: "send"; send: "dly" | "rev" } | { kind: "dist" };
 
 export interface LockParam {
   /** Stable id: the key in `Step.parameterLocks` (saved with the project, so never renamed). */
@@ -26,28 +27,34 @@ export interface LockParam {
   base(tp: TrackPattern): number;
 }
 
-const cache = new Map<number, readonly LockParam[]>();
-
-/** Every parameter of `track` a step can lock: its sound controls (first, in control order), then its delay and reverb sends, then (synths only) its distortion. */
-export function lockParams(track: number): readonly LockParam[] {
-  let list = cache.get(track);
-  if (!list) {
-    list = [
-      ...TRACKS[track].controls.map((c, i): LockParam => ({ id: `instrument.${c.key}`, label: c.label, target: { kind: "sound", control: i }, base: (tp) => tp.sound[i] })),
-      { id: "fx.delaySend", label: "DLY", target: { kind: "send", send: "dly" }, base: (tp) => tp.dly.send },
-      { id: "fx.reverbSend", label: "REV", target: { kind: "send", send: "rev" }, base: (tp) => tp.rev.send },
-      ...(hasDistortion(track) ? [{ id: "fx.distortion", label: "DIST", target: { kind: "dist" }, base: (tp: TrackPattern) => tp.dist ?? 0 } satisfies LockParam] : []),
-    ];
-    cache.set(track, list);
-  }
-  return list;
+/** The lock id of knob `at` of slot `slot`. */
+export function soundLockId(slot: 0 | 1, at: number): string {
+  return `slot.${SLOT_NAMES[slot].toLowerCase()}.${at}`;
 }
 
-/** The lock parameter behind sound control `control` of `track`. */
-export const soundParam = (track: number, control: number): LockParam => lockParams(track)[control];
+/** Every parameter a step can lock on a track: the knobs of slot A then slot B, then the delay and reverb sends, then the distortion. The
+ * same list for every track; a position the slot's engine has no knob at simply never gets written. */
+const LOCKS: readonly LockParam[] = [
+  ...([0, 1] as const).flatMap((slot) =>
+    Array.from({ length: SLOT_KNOBS }, (_, i): LockParam => ({
+      id: soundLockId(slot, i), label: `${SLOT_NAMES[slot]}${i + 1}`, target: { kind: "sound", slot, control: i }, base: (tp) => tp.slots[slot][i],
+    })),
+  ),
+  { id: "fx.delaySend", label: "DLY", target: { kind: "send", send: "dly" }, base: (tp) => tp.dly.send },
+  { id: "fx.reverbSend", label: "REV", target: { kind: "send", send: "rev" }, base: (tp) => tp.rev.send },
+  { id: "fx.distortion", label: "DIST", target: { kind: "dist" }, base: (tp) => tp.dist },
+];
+const BY_ID = new Map(LOCKS.map((p) => [p.id, p]));
 
-/** The lock parameter with this id, if the track has it. */
-export const lockParam = (track: number, id: string): LockParam | undefined => lockParams(track).find((p) => p.id === id);
+export function lockParams(_track?: number): readonly LockParam[] {
+  return LOCKS;
+}
+
+/** The lock parameter behind knob `at` of slot `slot`. */
+export const soundParam = (_track: number, slot: 0 | 1, at: number): LockParam => LOCKS[slot * SLOT_KNOBS + at];
+
+/** The lock parameter with this id. */
+export const lockParam = (_track: number, id: string): LockParam | undefined => BY_ID.get(id);
 
 /** The step P-LOCK mode is editing on `track`, if any: the selected step of the focused track while the mode is on. */
 export function lockStep(s: Pick<AppState, "plock" | "focus" | "selStep" | "patterns" | "pattern">, track: number): Step | undefined {
@@ -57,10 +64,10 @@ export function lockStep(s: Pick<AppState, "plock" | "focus" | "selStep" | "patt
 /** The value of `param` on `step`: its lock when it has one, else the base. */
 export const effectiveValue = (tp: TrackPattern, step: Step | undefined, param: LockParam): number => step?.parameterLocks?.[param.id] ?? param.base(tp);
 
-/** The track's sound as it is on `step` (a new array; the base `tp.sound` when the step has no locks). */
-export function effectiveSound(tp: TrackPattern, track: number, step: Step | undefined): number[] {
-  if (!hasLocks(step)) return tp.sound;
-  return tp.sound.map((_, i) => effectiveValue(tp, step, soundParam(track, i)));
+/** The track's two slot sounds as they are on `step` (new arrays; the base `tp.slots` when the step has no locks). */
+export function effectiveSound(tp: TrackPattern, track: number, step: Step | undefined): [number[], number[]] {
+  if (!hasLocks(step)) return tp.slots;
+  return [0, 1].map((slot) => tp.slots[slot].map((_, i) => effectiveValue(tp, step, soundParam(track, slot as 0 | 1, i)))) as [number[], number[]];
 }
 
 export const hasLocks = (step: Step | undefined): boolean => !!step?.parameterLocks && Object.keys(step.parameterLocks).length > 0;
@@ -75,7 +82,7 @@ export function clearLocks(step: Step): void {
   delete step.parameterLocks;
 }
 
-/** Locks from a save, cleaned: known parameters of the track only, finite values clamped to 0..1. */
+/** Locks from a save, cleaned: known parameters only, finite values clamped to 0..1. */
 export function sanitizeLocks(track: number, locks: unknown): Record<string, number> | undefined {
   if (!locks || typeof locks !== "object") return undefined;
   const out: Record<string, number> = {};

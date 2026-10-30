@@ -142,6 +142,27 @@ button.oled { cursor: pointer; text-align: left; }
 .chips { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .chip { min-height: 32px; padding: 0 10px; max-width: 100%; border-radius: var(--radius); background: var(--cap); border: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--text); white-space: nowrap; }
 .chip[data-active="true"] { background: var(--text); border-color: var(--text); color: var(--ink); }
+
+/* two-slot tracks: the slot tabs share the sound panel's title row; the engine chips are the old preset row */
+.sound .panel-title h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.slot-tabs { margin-left: auto; flex: none; }
+.slot-tabs .chip { min-height: 30px; padding: 0 9px; font-size: 10px; display: inline-flex; align-items: center; gap: 5px; }
+.slot-tabs .slot-name { font-weight: 400; opacity: 0.7; }
+.slot-tabs .chip[data-active="true"] .slot-name { opacity: 1; }
+.chips .variant { border-style: dashed; border-color: var(--acc); color: var(--acc); max-width: 14ch; overflow: hidden; text-overflow: ellipsis; }
+select.chip.variant { appearance: none; -webkit-appearance: none; background: var(--cap); padding-right: 8px; }
+.empty-slot { grid-column: 1 / -1; align-self: center; text-align: center; padding: 14px 0; }
+@media (max-width: 699px) { .sound .panel-title > .silk { display: none; } }
+
+/* the sample modal */
+.sample-modal { width: min(380px, 100%); }
+.sample-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 46vh; overflow-y: auto; }
+.sample-row { display: flex; align-items: stretch; gap: 4px; }
+.sample-row .btn.sm { min-width: 38px; }
+.sample-pick { flex: 1; min-width: 0; min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border-radius: var(--radius); background: var(--cap); border: 1px solid var(--rule); font: 700 12px var(--font-mono); letter-spacing: 0.04em; color: var(--text); text-align: left; }
+.sample-row[data-active="true"] .sample-pick { background: var(--text); border-color: var(--text); color: var(--ink); }
+.sample-row[data-active="true"] .sample-pick .silk { color: inherit; }
+.sample-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hint { margin: 8px 0 0; text-align: center; flex: none; }
 
 /* ---- sequencer -------------------------------------------------------------------------------- */
@@ -430,7 +451,11 @@ button.oled { cursor: pointer; text-align: left; }
   .band > .panel, .app[data-tab] .band > .panel { padding: 10px 12px; }
   .band .panel-title { margin-bottom: 6px; }
   .sound { display: grid; grid-template-columns: 150px minmax(0, 1fr) 118px; grid-template-rows: auto 1fr; grid-template-areas: "title knobs sends" "chips knobs sends"; column-gap: 16px; min-height: 0; }
-  .sound .panel-title { grid-area: title; }
+  .sound .panel-title { grid-area: title; flex-wrap: wrap; row-gap: 4px; }
+  .sound .panel-title > .silk { display: none; }
+  .sound .panel-title h2 { flex: 1 1 0; }
+  .slot-tabs { margin-left: 0; width: 100%; }
+  .slot-tabs .chip { flex: 1 1 0; justify-content: center; min-height: 26px; padding: 0 4px; }
   .sound .chips { grid-area: chips; align-content: start; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
   .sound .chips .silk { grid-column: 1 / -1; }
   .sound .chip { min-height: 28px; padding: 2px 4px; font-size: 10px; min-width: 0; white-space: normal; line-height: 1.1; overflow-wrap: anywhere; }

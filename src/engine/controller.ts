@@ -6,9 +6,10 @@ import { Groovebox, type MixInput } from "./audio";
 import type { AudibleStep, HostPlayback } from "./hostplay";
 import { laneLayers, layeredTarget, sweepLevel, VERB_ID, VERB_TAIL, type PunchLayer } from "./mangler";
 import { editPattern, getState, observe, setState } from "./store";
-import { TRACKS } from "./spec";
+import { trackProfile } from "./catalogue";
+import { NUM_TRACKS } from "./spec";
 import { MAX_CHAIN, pickWriteLane, trackStepAt, type Pattern } from "./state";
-import { MELODIC, StepCompiler, type StepNote } from "./stepcompile";
+import { StepCompiler, type StepNote } from "./stepcompile";
 import { clearLit, flashKey, setLit } from "./keyhl";
 import { setAudible } from "./playhead";
 import { gateForHeld, recordStep } from "./record";
@@ -73,7 +74,7 @@ class Controller {
   private arpFreeTime = -1;
   private arpFreeStep = 0;
 
-  /** The plugin host's transport and native playback, when this host can play Pulse.8 itself (see hostplay.ts). */
+  /** The plugin host's transport and native playback, when this host can play Hybrid.8 itself (see hostplay.ts). */
   private host: HostPlayback | null = null;
 
   constructor() {
@@ -104,7 +105,7 @@ class Controller {
     setState({ audio: "starting", audioError: "" });
     try {
       const hostplay = hasEmbeddedHost() ? import("./hostplay") : null;
-      const gb = await Groovebox.create();
+      const gb = await Groovebox.create(getState().rig);
       await projectReady;
       this.gb = gb;
       startTicker(() => this.tick(), TICK_MS);
@@ -244,13 +245,14 @@ class Controller {
   audition(track: number, note?: number): void {
     const gb = this.gb;
     if (!gb) return;
-    const spec = TRACKS[track];
+    const { rig } = getState();
+    const profile = trackProfile(rig, track);
     const tp = this.soundPattern().tracks[track];
-    if (spec.role === "drum") {
-      gb.note(track, { velocity: 0.9, chokeGroup: spec.chokeGroup });
+    if (!profile.melodic) {
+      gb.note(track, rig, { velocity: 0.9 }, tp.slots);
     } else {
-      const n = note ?? spec.defaultNote ?? spec.rootMidi ?? 0;
-      gb.note(track, { velocity: 0.9, pitch: n - (spec.rootMidi ?? 0) + 12 * tp.oct, duration: 0.28 });
+      const n = note ?? profile.defaultNote;
+      gb.note(track, rig, { velocity: 0.9, pitch: n - profile.rootMidi + 12 * tp.oct, duration: 0.28 }, tp.slots);
     }
   }
 
@@ -268,7 +270,7 @@ class Controller {
   /** A melodic key went down while recording: write its note on the nearest step. */
   recordDown(track: number, note: number): void {
     const gb = this.gb;
-    if (!gb || !this.recording || TRACKS[track].role === "drum") return;
+    if (!gb || !this.recording || !trackProfile(getState().rig, track).melodic) return;
     const st = getState();
     const pattern = st.playPattern;
     const stepDur = 15 / this.bpmNow();
@@ -318,7 +320,7 @@ class Controller {
   /** Hand a compiled note to the engine at its audio time, lighting its key when it is an arp note. */
   private playNote = (n: StepNote): void => {
     const gb = this.gb!;
-    gb.note(n.track, n.params);
+    gb.note(n.track, getState().rig, n.params, this.soundPattern().tracks[n.track].slots);
     const flash = n.flashMs;
     if (flash) gb.when(n.params.time, () => flashKey(n.track, flash.note, flash.ms));
   };
@@ -475,7 +477,7 @@ class Controller {
     if (!this.gb) return;
     if (
       next.patterns !== prev.patterns || next.mutes !== prev.mutes || next.solos !== prev.solos ||
-      next.pattern !== prev.pattern
+      next.pattern !== prev.pattern || next.rig !== prev.rig
     ) {
       this.syncNow();
     }
@@ -503,7 +505,8 @@ class Controller {
   private syncNow(): void {
     const gb = this.gb;
     if (!gb) return;
-    gb.applySound(this.soundPattern());
+    gb.syncRig(getState().rig);
+    gb.applySound(this.soundPattern(), getState().rig);
     // While the DAW plays, the written FX are the host's (they ride the sequence): re-applying the page's idea of the punch chain
     // would cut a ramp that is running. Only a punch the player holds is the page's to apply.
     if (this.host?.playing && getState().punch === 0) gb.applyMix(this.mixInput(false, 0), undefined, "pattern");
@@ -595,8 +598,8 @@ class Controller {
 
     // parameter locks first: they land before the notes of the same block
     const run = this.run;
-    gb.scheduleLocks(pat, step, t, run);
-    const notes = this.compiler.step(pat, step, run, this.stepCount, this.gridTime, { stepDur, swing: st.swing, arp: st.arp }, this.playNote);
+    gb.scheduleLocks(pat, st.rig, step, t, run);
+    const notes = this.compiler.step(pat, step, run, this.stepCount, this.gridTime, { stepDur, swing: st.swing, arp: st.arp, rig: st.rig }, this.playNote);
     this.events.push({ time: t, step, pattern: this.schedPattern, chainPos: this.chainPos, run, notes });
 
     // Written FX. A punch the player is holding right now wins over the written lane.
@@ -649,13 +652,16 @@ class Controller {
     this.run = run;
     if (next === this.schedPattern) return;
     this.schedPattern = next;
-    gb.applySound(st.patterns[next], time);
+    gb.applySound(st.patterns[next], st.rig, time);
     gb.when(time, () => this.applyLayers(this.layersApplied));
   }
 
   /** Light the keys of the notes now sounding; melodic tracks with no note on this step go dark. */
   private lightKeys(ev: StepEvent): void {
-    for (const track of MELODIC) setLit(track, ev.notes.filter(([t]) => t === track).map(([, n]) => n));
+    const { rig } = getState();
+    for (let track = 0; track < NUM_TRACKS; track++) {
+      if (trackProfile(rig, track).melodic) setLit(track, ev.notes.filter(([t]) => t === track).map(([, n]) => n));
+    }
   }
 
   /** Move the store's playhead to what is audible now; record/erase FX as steps pass. */

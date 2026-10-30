@@ -3,8 +3,9 @@
 // saved. Project files (export / import) are separate and unchanged.
 import { FILE_EXT, PRODUCT } from "../product";
 import { sanitizeLocks } from "./plock";
-import { BASS_TRACK, defaultSound, hasDistortion, NUM_TRACKS, TRACKS } from "./spec";
-import { emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newFxLane, newPattern, NUM_PATTERNS, type AppState, type Pattern } from "./state";
+import { normalizeRig, trackProfile, SLOT_KNOBS, type Rig } from "./catalogue";
+import { NUM_TRACKS } from "./spec";
+import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type Pattern } from "./state";
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { newDelay, newDist, newReverb } from "./trackfx";
@@ -17,6 +18,8 @@ const CURRENT_ID = "current";
 
 interface Saved {
   projectName?: string;
+  /** Which engine is in each slot of each track. Absent: the starting rig. */
+  rig?: unknown;
   /** `null` stands for an untouched pattern (see `sparse`); older files hold only 16 entries. */
   patterns: Array<Pattern | null>;
   chain: number[];
@@ -30,55 +33,42 @@ interface Saved {
   arp?: ArpSettings[];
 }
 
+/** A parsed project: `Saved` with the pieces that were cleaned. */
+type Project = Omit<Saved, "rig" | "patterns"> & { rig: Rig; patterns: Pattern[] };
+
 function valid(p: unknown): p is Pattern {
   const x = p as Pattern;
   return (
     !!x && Array.isArray(x.tracks) && x.tracks.length === NUM_TRACKS && Array.isArray(x.fxLanes) && x.fxLanes.length === FX_LANES &&
     x.fxLanes.every((l) => Array.isArray(l?.fx) && l.fx.length === MAX_STEPS && Array.isArray(l.fxLvl) && l.fxLvl.length === MAX_STEPS) &&
     typeof x.length === "number" && !!x.mangler &&
-    x.tracks.every((t, i) => Array.isArray(t.steps) && t.steps.length === MAX_STEPS && t.sound?.length === TRACKS[i].controls.length)
+    x.tracks.every((t) => Array.isArray(t.steps) && t.steps.length === MAX_STEPS && Array.isArray(t.slots) && t.slots.length === 2 && t.slots.every((sl) => Array.isArray(sl) && sl.length === SLOT_KNOBS && sl.every(Number.isFinite)))
   );
 }
 
-/** Older saves: the FX send became separate delay and reverb sends; punches gained per-FX
- * parameters and a recorded sweep level (a written punch used to be simply "on", i.e. full). */
-function migrate(p: Pattern): void {
+/** A saved pattern, tidied: the pieces that have a range or a shape get one (a hand-edited file must not reach the engine as-is). */
+function normalize(p: Pattern): void {
   if (!p || !Array.isArray(p.tracks)) return;
   p.tracks.forEach((t, i) => {
-    const old = t as unknown as { send?: number };
-    if (!t.dly) t.dly = { ...newDelay(i), send: typeof old.send === "number" ? old.send : newDelay(i).send };
+    if (!t.dly) t.dly = newDelay(i);
     if (!t.rev) t.rev = newReverb(i);
     if (typeof t.punch !== "boolean") t.punch = true;
-    // the distortion insert belongs to the synths: its amount is a number in 0..1 (absent in older saves = off), no other track has one
-    if (hasDistortion(i)) t.dist = typeof t.dist === "number" && Number.isFinite(t.dist) ? Math.min(1, Math.max(0, t.dist)) : newDist();
-    else delete t.dist;
+    t.dist = typeof t.dist === "number" && Number.isFinite(t.dist) ? Math.min(1, Math.max(0, t.dist)) : newDist();
+    if (Array.isArray(t.slots)) for (const sl of t.slots) if (Array.isArray(sl)) sl.forEach((v, k) => { if (Number.isFinite(v)) sl[k] = Math.min(1, Math.max(0, v)); });
     // last step: whole numbers inside the pattern; anything else (or the full length) is "no last step"
     if (typeof t.last !== "number" || !Number.isFinite(t.last) || t.last < 1 || t.last >= p.length) delete t.last;
     else t.last = Math.floor(t.last);
-    delete old.send;
   });
   if (!Array.isArray(p.mangler?.param)) p.mangler = defaultMangler();
-  // The single FX lane became three: an old pattern's lane is the first.
-  const old = p as unknown as { fx?: number[]; fxLvl?: number[] };
-  if (!Array.isArray(p.fxLanes) && Array.isArray(old.fx)) {
-    const lvl = Array.isArray(old.fxLvl) ? old.fxLvl : old.fx.map((id) => (id ? 1 : 0));
-    p.fxLanes = [{ fx: old.fx, fxLvl: lvl }, ...Array.from({ length: FX_LANES - 1 }, newFxLane)];
-  }
-  delete old.fx;
-  delete old.fxLvl;
 }
 
 /** Validates and normalises a saved project (any age); null if it is not a usable project. */
-function parseProject(s: Saved): (Saved & { patterns: Pattern[] }) | null {
+function parseProject(s: Saved): Project | null {
   if (!s || !Array.isArray(s.patterns) || s.patterns.length < 1 || s.patterns.length > NUM_PATTERNS) return null;
   // Untouched patterns are saved as null, and saves from before the bank grew to 64 are short.
-  const patterns: Pattern[] = Array.from({ length: NUM_PATTERNS }, (_, i) => s.patterns[i] ?? newPattern());
-  // The bass gained a control (ENV MOD): older saves get its default sound, the rest is kept.
-  for (const p of patterns) {
-    const t = p?.tracks?.[BASS_TRACK];
-    if (t && Array.isArray(t.sound) && t.sound.length !== TRACKS[BASS_TRACK].controls.length) t.sound = defaultSound(TRACKS[BASS_TRACK]);
-  }
-  for (const p of patterns) migrate(p);
+  const rig = normalizeRig(s.rig, DEFAULT_RIG, NUM_TRACKS);
+  const patterns: Pattern[] = Array.from({ length: NUM_PATTERNS }, (_, i) => s.patterns[i] ?? newPattern(rig));
+  for (const p of patterns) normalize(p);
   if (!patterns.every(valid)) return null;
   // Parameter locks (absent in older saves): keep only known parameters with sane values.
   for (const p of patterns) {
@@ -93,6 +83,7 @@ function parseProject(s: Saved): (Saved & { patterns: Pattern[] }) | null {
   }
   return {
     projectName: typeof s.projectName === "string" ? s.projectName.slice(0, 40) : "",
+    rig,
     patterns,
     chain: Array.isArray(s.chain) ? s.chain.filter((n) => n >= 0 && n < NUM_PATTERNS).slice(0, MAX_CHAIN) : [],
     chainOn: !!s.chainOn,
@@ -105,43 +96,44 @@ function parseProject(s: Saved): (Saved & { patterns: Pattern[] }) | null {
 }
 
 /** Files hold JSON, and 64 patterns are ~1.7 MB of it: patterns still equal to a fresh one are written as null. */
-function sparse(patterns: Pattern[]): Array<Pattern | null> {
-  const blank = JSON.stringify(newPattern());
+function sparse(patterns: Pattern[], rig: Rig): Array<Pattern | null> {
+  const blank = JSON.stringify(newPattern(rig));
   return patterns.map((p) => (JSON.stringify(p) === blank ? null : p));
 }
 
 /** Whether a step is exactly what a fresh pattern holds (so it can be left out of a host snapshot and rebuilt on restore). */
-const isBlankStep = (st: Pattern["tracks"][number]["steps"][number], track: number): boolean =>
-  !st.on && !st.acc && !st.slide && st.note === (TRACKS[track].defaultNote ?? 0) && !st.gate && !st.parameterLocks;
+const isBlankStep = (st: Pattern["tracks"][number]["steps"][number], note: number): boolean =>
+  !st.on && !st.acc && !st.slide && st.note === note && !st.gate && !st.parameterLocks;
 
 /** A pattern holds 64 steps per track whatever its length, and most of them are blank (a 16-step pattern: three quarters).
  * For the host's session each track's trailing blank steps are dropped; `expandPattern` puts them back. Lossless, and
  * ~4x smaller, which matters because the whole snapshot crosses the plugin bridge on every window open, close and edit. */
-function compactPattern(p: Pattern | null): Pattern | null {
+function compactPattern(p: Pattern | null, rig: Rig): Pattern | null {
   if (!p) return p;
   return {
     ...p,
     tracks: p.tracks.map((t, i) => {
+      const note = trackProfile(rig, i).defaultNote;
       let n = t.steps.length;
-      while (n > 0 && isBlankStep(t.steps[n - 1], i)) n--;
+      while (n > 0 && isBlankStep(t.steps[n - 1], note)) n--;
       return n === t.steps.length ? t : { ...t, steps: t.steps.slice(0, n) };
     }),
   };
 }
 
 /** Undoes `compactPattern` in place (a no-op for a full pattern, so files and older snapshots read the same). */
-function expandPattern(p: Pattern | null): void {
+function expandPattern(p: Pattern | null, rig: Rig): void {
   if (!p || !Array.isArray(p.tracks)) return;
   p.tracks.forEach((t, i) => {
     if (!Array.isArray(t?.steps) || t.steps.length >= MAX_STEPS) return;
-    const note = TRACKS[i]?.defaultNote ?? 0;
+    const note = trackProfile(rig, i).defaultNote;
     for (let n = t.steps.length; n < MAX_STEPS; n++) t.steps.push(emptyStep(note));
   });
 }
 
 function snapshot(): Saved {
   const s = getState();
-  return { projectName: s.projectName, patterns: s.patterns, chain: s.chain, chainOn: s.chainOn, bpm: s.bpm, swing: s.swing, pattern: s.pattern, scale: s.scale, arp: s.arp };
+  return { projectName: s.projectName, rig: s.rig, patterns: s.patterns, chain: s.chain, chainOn: s.chainOn, bpm: s.bpm, swing: s.swing, pattern: s.pattern, scale: s.scale, arp: s.arp };
 }
 
 /** Restores the autosave slot into the store. Resolves once done; a missing or damaged slot just
@@ -223,7 +215,7 @@ export async function deleteSave(id: string): Promise<void> {
 }
 
 /** Puts a parsed project in the store. The view resets too: the old page or selected step may not exist in it. */
-function replaceProject(project: Saved & { patterns: Pattern[] }, projectName: string): void {
+function replaceProject(project: Project, projectName: string): void {
   setState({ ...project, projectName, cue: null, page: 0, selStep: -1 });
 }
 
@@ -237,8 +229,9 @@ export function loadSaved(entry: SavedProject): boolean {
 
 /** The project as the text of an export file (and of a host snapshot): untouched patterns are written as null. */
 function projectText(name: string, compact = false): string {
-  const sparsed = sparse(getState().patterns);
-  const patterns = compact ? sparsed.map(compactPattern) : sparsed;
+  const { rig } = getState();
+  const sparsed = sparse(getState().patterns, rig);
+  const patterns = compact ? sparsed.map((p) => compactPattern(p, rig)) : sparsed;
   return JSON.stringify({ app: FILE_APP, version: 1, name, project: { ...snapshot(), patterns } });
 }
 
@@ -303,7 +296,7 @@ function importProjectText(text: string, fileName: string): string {
 //  - a snapshot that is not ours or not readable starts fresh instead of wedging startup.
 
 /** The persisted fields, compared by reference: if you add a persisted field, add it here too (and to `snapshot`). */
-const persisted = (s: AppState) => [s.patterns, s.chain, s.chainOn, s.bpm, s.swing, s.projectName, s.scale, s.arp];
+const persisted = (s: AppState) => [s.rig, s.patterns, s.chain, s.chainOn, s.bpm, s.swing, s.projectName, s.scale, s.arp];
 const projectChanged = (next: AppState, prev: AppState) => {
   const a = persisted(next);
   const b = persisted(prev);
@@ -324,11 +317,12 @@ export function toHostSnapshot(): HostStateSnapshot {
 }
 
 /** The project in a snapshot, or null when it is not ours, not a format we read, or malformed. */
-export function fromHostSnapshot(snap: HostStateSnapshot): (Saved & { patterns: Pattern[] }) | null {
+export function fromHostSnapshot(snap: HostStateSnapshot): Project | null {
   if (snap.app !== HOST_APP || !HOST_FORMATS_READ.includes(snap.format)) return null;
   try {
     const data = JSON.parse(snap.data) as { project?: Saved };
-    data?.project?.patterns?.forEach(expandPattern);
+    const rig = normalizeRig(data?.project?.rig, DEFAULT_RIG, NUM_TRACKS);
+    data?.project?.patterns?.forEach((p) => expandPattern(p, rig));
     return parseProject(data?.project as Saved);
   } catch {
     return null;

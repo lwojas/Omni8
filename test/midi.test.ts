@@ -4,7 +4,7 @@ import { cleanValue, getParam, onParamChange, paramInfo, paramManifest, setParam
 import { locateSong } from "../src/engine/song";
 import { initialState, newPattern } from "../src/engine/state";
 import { getState, replaceState, setState } from "../src/engine/store";
-import { TRACKS } from "../src/engine/spec";
+
 import { createClockFollower } from "../src/midi/clock";
 import {
   compileMapping, createMidiControl, midiToValue, valueToMidi,
@@ -31,9 +31,9 @@ describe("mapping", () => {
   it("compiles against the real parameters with no warnings", () => {
     expect(compileMapping(midiMapping, bus).warnings).toEqual([]);
   });
-  it("maps every sound knob of every track (the table in mapping.ts matches the spec)", () => {
+  it("maps all eight knobs of both slots of every track (the table in mapping.ts matches the registry)", () => {
     const mapped = compileMapping(midiMapping, bus).byParam;
-    for (const t of TRACKS) for (const c of t.controls) expect(mapped.has(`track.${t.id + 1}.sound.${c.key}`)).toBe(true);
+    for (let t = 1; t <= 8; t++) for (const slot of ["a", "b"]) for (let k = 1; k <= 8; k++) expect(mapped.has(`track.${t}.${slot}.${k}`)).toBe(true);
   });
   it("reports unknown parameters, bad channels and doubled CCs instead of failing", () => {
     const m: MidiMapping = {
@@ -101,12 +101,14 @@ describe("input", () => {
     control.handle([0xb0, 20, 63]);
     expect(getState().mutes[0]).toBe(false);
   });
-  it("sets a stepped control by index (FM colour) and a sound knob by position", () => {
+  it("sets a sound knob by its position in a slot, whatever engine is there", () => {
     const { control } = rig();
-    control.handle([0xb7, 70, 127]); // channel 8 = FM, first knob is COLOR (8 steps)
-    expect(getParam("track.8.sound.color", getState())).toBe(7);
-    control.handle([0xb6, 74, 0]); // channel 7 = ACID, CC74 = filter cutoff
-    expect(getState().patterns[0].tracks[6].sound[0]).toBe(0);
+    control.handle([0xb7, 70, 127]); // channel 8 = pluck + pad: CC 70 is slot A knob 1
+    expect(getParam("track.8.a.1", getState())).toBe(1);
+    control.handle([0xb5, 74, 0]); // channel 6 = acid, CC 74 = slot A knob 5
+    expect(getState().patterns[0].tracks[5].slots[0][4]).toBe(0);
+    control.handle([0xb5, 103, 127]); // slot B of the same track has its own CCs (102-107)
+    expect(getParam("track.6.b.2", getState())).toBe(1); // slot B of the first acid track is empty: the knob is stored, nothing hears it
   });
   it("uses the default channel for a parameter without one, and an override otherwise", () => {
     const m: MidiMapping = { defaultChannel: 5, parameters: { "track.1.volume": { cc: 7 }, "track.2.volume": { cc: 7, channel: 2 } } };
