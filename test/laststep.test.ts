@@ -16,7 +16,7 @@ const ids: GraphIds = {
   delayBus: [31, 32, 33, 34, 35, 36, 37, 38], reverbBus: [41, 42, 43, 44, 45, 46, 47, 48],
   delayFx: Array.from({ length: 8 }, (_, i) => ({ dub: 100 + i, free: 200 + i })), reverbFx: [300, 301, 302, 303, 304, 305, 306, 307], distFx: [350, 351, 352, 353, 354, 355, 356, 357],
   // slot A of each track has an instrument; slot B is left without one, so the tests below count what slot A plays
-  slotBus: Array.from({ length: 8 }, (_, i) => [70 + i, 80 + i] as [number, number]), slotFilter: Array.from({ length: 8 }, (_, i) => [90 + i, 100 + i] as [number, number]),
+  slotBus: Array.from({ length: 8 }, (_, i) => [70 + i, 80 + i] as [number, number]), filterFx: [90, 91, 92, 93, 94, 95, 96, 97],
   inst: [51, 52, 53, 54, 55, 56, 57, 58].map((id) => [id, undefined] as [number, undefined]), manglerBus: 60,
   fx: { filter: 1, sat: 2, crush: 3, phaser: 4, flange: 5, dub: 6, verb: 7 },
 };

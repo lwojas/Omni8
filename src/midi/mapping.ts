@@ -9,22 +9,23 @@
 //
 // A track has two slots and the engine in a slot can change, so a knob is addressed by its position
 // (`track.N.a.K`, `track.N.b.K`), not by what it does: K 1-6 are the engine's own knobs in the order
-// the app shows them, 7 is the slot's LEVEL and 8 its FILTER.
+// the app shows them, 7 is the slot's LEVEL.
 //
-//   CC   7  volume                 CC  91  reverb send        slot A: CC 70-75 knobs 1-6, 14 level, 76 filter
-//   CC  12  delay send             CC  20  mute (64+ = on)    slot B: CC 102-107 knobs 1-6, 15 level, 78 filter
+//   CC   7  volume                 CC  91  reverb send        slot A: CC 70 72 73 75 76 79 knobs 1-6, 14 level
+//   CC  12  delay send             CC  20  mute (64+ = on)    slot B: CC 102-107 knobs 1-6, 15 level
 //   CC  21  solo                   CC  22  arpeggiator on
-//   CC  77  distortion (the INSERT FX, every track)
+//   CC  77  distortion (INSERT FX of a track with a synth)
+//   CC  74  filter cutoff, 71 resonance, 78 mode (64+ = high-pass): INSERT FX of the other tracks, as in efem
 //
 // There is no pan: the app has none. CC 10 is left free for it.
 import { NUM_TRACKS } from "../engine/spec";
 import type { MidiMapping } from "./control";
 
 const TRACK_COUNT = NUM_TRACKS;
-/** CC of each of a slot's 8 knobs, by position: six engine knobs, LEVEL, FILTER. */
+/** CC of each of a slot's 7 knobs, by position: six engine knobs, LEVEL. (71, 74 and 78 are the filter's, as in efem.) */
 const SLOT_CCS = [
-  [70, 71, 72, 73, 74, 75, 14, 76],
-  [102, 103, 104, 105, 106, 107, 15, 78],
+  [70, 72, 73, 75, 76, 79, 14],
+  [102, 103, 104, 105, 106, 107, 15],
 ] as const;
 
 function build(): MidiMapping["parameters"] {
@@ -39,6 +40,9 @@ function build(): MidiMapping["parameters"] {
     parameters[id("reverbSend")] = { cc: 91, channel };
     parameters[id("arp")] = { cc: 22, channel };
     parameters[id("distortion")] = { cc: 77, channel };
+    parameters[id("filterCut")] = { cc: 74, channel };
+    parameters[id("filterRes")] = { cc: 71, channel };
+    parameters[id("filterMode")] = { cc: 78, channel };
     (["a", "b"] as const).forEach((slot, s) => {
       SLOT_CCS[s].forEach((cc, k) => { parameters[id(`${slot}.${k + 1}`)] = { cc, channel }; });
     });

@@ -20,7 +20,7 @@ const tp = (t = T) => getState().patterns[getState().pattern].tracks[t];
 const range = (n: number) => Array.from({ length: NUM_TRACKS }, (_, i) => n + i);
 const ids = {
   trackBus: range(200), busB: range(250), busC: range(260), delayBus: range(500), reverbBus: range(600),
-  delayFx: range(700).map((dub) => ({ dub, free: dub + 100 })), reverbFx: range(900), distFx: range(450),
+  delayFx: range(700).map((dub) => ({ dub, free: dub + 100 })), reverbFx: range(900), distFx: range(450), filterFx: range(470),
 } as unknown as GraphIds;
 
 beforeEach(() => replaceState(initialState()));

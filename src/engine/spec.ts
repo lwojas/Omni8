@@ -23,8 +23,8 @@ export interface ControlSpec {
   /** Stepped control: detent names, `lo..hi` is `0..names.length-1`. */
   steps?: readonly string[];
   /** Where the control lands. Absent: a webdsp instrument parameter (`param`). The others are handled by the audio layer:
-   * the slot's own fader and filter (on its bus), and a sample's playback settings (read when a note triggers). */
-  dest?: "level" | "filter" | "sample";
+   * the slot's own fader (on its bus), and a sample's playback settings (read when a note triggers). */
+  dest?: "level" | "sample";
   /** Readout shown at the top of the travel instead of the number (a sample's DECAY reads FULL: no fade, the sample plays out). */
   top?: string;
 }

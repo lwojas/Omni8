@@ -30,13 +30,13 @@ import {
 import { defaultWorkletUrl } from "webdsp/worklet-url";
 import { baseValues, MANGLER_KEYS, MANGLER_PARAMS, type FxSlot, type ManglerValues } from "./mangler";
 import { lockParams, type LockParam } from "./plock";
-import { controlAt, FILTER_AT, LEVEL_AT, trackProfile, voiceOf, type Rig, type VoiceSpec } from "./catalogue";
+import { controlAt, LEVEL_AT, trackProfile, voiceOf, type Rig, type VoiceSpec } from "./catalogue";
 import { sampleBytes } from "./samples";
 import { playSlots, type SlotPlay, type SlotSounds, type TrackNote } from "./slots";
 import { normToUnits, NUM_TRACKS } from "./spec";
 import { trackStepAt, type Pattern } from "./state";
 import {
-  BEAT_DIVISIONS, DELAY_FEEDBACK_BEAT, DELAY_FEEDBACK_FREE, DELAY_TONE, distDriveDb, distMix, distTrimDb, freeDelaySeconds, reverbDamping, reverbDecay,
+  BEAT_DIVISIONS, DELAY_FEEDBACK_BEAT, DELAY_FEEDBACK_FREE, DELAY_TONE, distDriveDb, distMix, distTrimDb, filterHz, filterQ, freeDelaySeconds, reverbDamping, reverbDecay,
 } from "./trackfx";
 
 /** Work that has to land at a point on the audio clock but is not a sample-accurate event
@@ -78,9 +78,10 @@ export interface GraphIds {
   reverbFx: readonly EffectId[];
   /** Per track: the distortion insert (Saturation) on bus A, ahead of the fader and both sends. */
   distFx: readonly EffectId[];
-  /** Per track and slot: the slot's bus (its level) and its low-pass Filter effect. */
+  /** Per track: the LP/HP filter insert on bus A, next to the distortion. */
+  filterFx: readonly EffectId[];
+  /** Per track and slot: the slot's bus (its level). */
   slotBus: ReadonlyArray<readonly [BusId, BusId]>;
-  slotFilter: ReadonlyArray<readonly [EffectId, EffectId]>;
   /** Per track and slot: the engine's instrument, undefined for an empty slot or a sample. Changes when an engine is swapped. */
   inst: Array<[InstrumentId | undefined, InstrumentId | undefined]>;
   manglerBus: BusId;
@@ -143,6 +144,11 @@ export function trackFxWrites(ids: GraphIds, pattern: Pattern, clamp: (param: nu
     fx(ids.reverbBus[t], ids.reverbFx[t], "decay", NodeParam.ReverbDecay, reverbDecay(rev.size));
     fx(ids.reverbBus[t], ids.reverbFx[t], "damp", NodeParam.ReverbDamping, reverbDamping(rev.size));
     for (const w of distWrites(ids, t, pattern.tracks[t].dist)) out.push(w);
+    const { filter } = pattern.tracks[t];
+    const f = (key: string, param: NodeParam, value: number) => out.push({ kind: "fx", key: `${t}:${key}`, bus: ids.trackBus[t], effect: ids.filterFx[t], param, value: clamp(param, value) });
+    f("fMode", NodeParam.FilterMode, filter.mode);
+    f("fCut", NodeParam.FilterCutoff, filterHz(filter.cut));
+    f("fRes", NodeParam.FilterResonance, filterQ(filter.res));
   }
   return out;
 }
@@ -166,7 +172,6 @@ function slotWrites(ids: GraphIds, track: number, slot: 0 | 1, voice: VoiceSpec 
   if (!c) return [];
   const key = `${track}:${slot}:${at}`;
   if (c.dest === "level") return [{ kind: "bus", key, bus: ids.slotBus[track][slot], param: NodeParam.BusGain, value: levelToGain(value) }];
-  if (c.dest === "filter") return [{ kind: "fx", key, bus: ids.slotBus[track][slot], effect: ids.slotFilter[track][slot], param: NodeParam.FilterCutoff, value: normToUnits(c, value) }];
   const instrument = ids.inst[track][slot];
   if (c.dest === "sample" || instrument === undefined) return [];
   return [{ kind: "inst", key, instrument, param: c.param, value: normToUnits(c, value) }];
@@ -178,6 +183,10 @@ export function lockWrites(ids: GraphIds, rig: Rig, track: number, p: LockParam,
   const t = p.target;
   if (t.kind === "sound") return slotWrites(ids, track, t.slot, trackProfile(rig, track).voices[t.slot], t.control, value);
   if (t.kind === "dist") return distWrites(ids, track, value);
+  if (t.kind === "filter") {
+    const cut = t.param === "cut";
+    return [{ kind: "fx", key: `${track}:${cut ? "fCut" : "fRes"}`, bus: ids.trackBus[track], effect: ids.filterFx[track], param: cut ? NodeParam.FilterCutoff : NodeParam.FilterResonance, value: cut ? filterHz(value) : filterQ(value) }];
+  }
   const delay = t.send === "dly";
   return [{ kind: "bus", key: `${track}:${delay ? "d" : "r"}`, bus: delay ? ids.trackBus[track] : ids.busB[track], param: NodeParam.BusSendAmount, value }];
 }
@@ -217,7 +226,7 @@ export class Groovebox {
   private readonly reverbFx: EffectId[] = [];
   private readonly distFx: EffectId[] = [];
   private readonly slotBus: Array<[BusId, BusId]> = [];
-  private readonly slotFilter: Array<[EffectId, EffectId]> = [];
+  private readonly filterFx: EffectId[] = [];
   private readonly inst: Array<[InstrumentId | undefined, InstrumentId | undefined]> = [];
   private readonly manglerBus: BusId;
   private readonly fx = {} as Record<FxSlot, EffectId>;
@@ -297,26 +306,22 @@ export class Groovebox {
       this.reverbFx.push(verb);
       // the distortion sits on bus A, so it follows both slots and comes before the fader and both sends; Saturation starts at mix 0, a pass-through
       this.distFx.push(runtime.addEffect(bus, EffectKind.Saturation));
-      // each slot has its own bus into bus A: its level, and a low-pass that starts fully open
+      // ... and so does the LP/HP filter insert (a track shows one or the other, see TrackProfile.insert); at LP with the cutoff open it passes everything
+      this.filterFx.push(runtime.addEffect(bus, EffectKind.Filter));
+      // each slot has its own bus into bus A: its level
       const sb: BusId[] = [];
-      const sf: EffectId[] = [];
       for (let slot = 0; slot < 2; slot++) {
         const sbus = runtime.createBus();
         runtime.setNodeParameter(sbus, NodeParam.BusOutput, bus);
-        const flt = runtime.addEffect(sbus, EffectKind.Filter);
-        runtime.setEffectParameter(sbus, flt, NodeParam.FilterMode, FilterMode.LowPass);
-        runtime.setEffectParameter(sbus, flt, NodeParam.FilterCutoff, this.clampFx(NodeParam.FilterCutoff, 20000));
         sb.push(sbus);
-        sf.push(flt);
       }
       this.slotBus.push([sb[0], sb[1]]);
-      this.slotFilter.push([sf[0], sf[1]]);
       this.inst.push([undefined, undefined]);
       this.applied.push(["", ""]);
     }
     this.ids = {
       trackBus: this.trackBus, busB: this.busB, busC: this.busC, delayBus: this.delayBus, reverbBus: this.reverbBus,
-      delayFx: this.delayFx, reverbFx: this.reverbFx, distFx: this.distFx, slotBus: this.slotBus, slotFilter: this.slotFilter,
+      delayFx: this.delayFx, reverbFx: this.reverbFx, distFx: this.distFx, filterFx: this.filterFx, slotBus: this.slotBus,
       inst: this.inst, manglerBus: this.manglerBus, fx: this.fx,
     };
     this.applyManglerValues(baseValues());
@@ -507,9 +512,9 @@ export class Groovebox {
     for (let t = 0; t < NUM_TRACKS; t++) {
       this.busCache.delete(`${t}:d`);
       this.busCache.delete(`${t}:r`);
-      for (const key of ["satDrive", "satOut", "satMix"]) this.fxCache.delete(`${t}:${key}`);
+      for (const key of ["satDrive", "satOut", "satMix", "fCut", "fRes"]) this.fxCache.delete(`${t}:${key}`);
       for (const slot of [0, 1]) {
-        for (const at of [LEVEL_AT, FILTER_AT]) { this.busCache.delete(`${t}:${slot}:${at}`); this.fxCache.delete(`${t}:${slot}:${at}`); }
+        this.busCache.delete(`${t}:${slot}:${LEVEL_AT}`);
       }
     }
   }

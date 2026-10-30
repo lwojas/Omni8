@@ -171,7 +171,7 @@ function RailItem({ track }: { track: number }) {
       >
         <span className="rail-no">{track + 1}</span>
         <span className="rail-name">
-          <b className="long">{spec.name}</b>
+          <b className="long">{spec.tag}</b>
           <b className="short">{spec.tag}</b>
           <small>{spec.desc}</small>
         </span>

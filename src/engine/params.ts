@@ -16,12 +16,12 @@
 //
 // A parameter's value is in its own domain, `kind` says which:
 //   norm  0..1 continuous      int  min..max whole numbers      bool  0 or 1
-import { setArp, setLevel, setLockable, setMute, setPunchSend, setSolo } from "./actions";
+import { setArp, setFilter, setLevel, setLockable, setMute, setPunchSend, setSolo } from "./actions";
 import { controller } from "./controller";
 import { effectiveValue, lockParam, lockStep, soundLockId } from "./plock";
 import { currentSource, withSource, type ParamSource } from "./source";
 import { defaultLevel, DEFAULT_RIG, NUM_PATTERNS, type AppState, type TrackPattern } from "./state";
-import { defaultDelaySend, defaultReverbSend } from "./trackfx";
+import { defaultDelaySend, defaultReverbSend, FILTER_MODES } from "./trackfx";
 import { SLOT_KNOBS, SLOT_NAMES, defaultSlotSound, trackProfile } from "./catalogue";
 import { TRACKS } from "./spec";
 import { getState, observe } from "./store";
@@ -69,6 +69,11 @@ function build(): ParamDef[] {
       { id: idOf(t, "delaySend"), label: `${name} delay send`, kind: "norm", min: 0, max: 1, def: defaultDelaySend(t), get: (s) => shown(s, t, "fx.delaySend"), set: (v) => setLockable(t, "fx.delaySend", v) },
       { id: idOf(t, "reverbSend"), label: `${name} reverb send`, kind: "norm", min: 0, max: 1, def: defaultReverbSend(t), get: (s) => shown(s, t, "fx.reverbSend"), set: (v) => setLockable(t, "fx.reverbSend", v) },
       { id: idOf(t, "punchSend"), label: `${name} punch FX send`, kind: "bool", min: 0, max: 1, def: 1, get: (s) => (tp(s, t).punch ? 1 : 0), set: (v) => setPunchSend(t, v >= 1) },
+    );
+    defs.push(
+      { id: idOf(t, "filterCut"), label: `${name} filter cutoff`, kind: "norm", min: 0, max: 1, def: 1, get: (s) => shown(s, t, "fx.filterCut"), set: (v) => setLockable(t, "fx.filterCut", v) },
+      { id: idOf(t, "filterRes"), label: `${name} filter resonance`, kind: "norm", min: 0, max: 1, def: 0, get: (s) => shown(s, t, "fx.filterRes"), set: (v) => setLockable(t, "fx.filterRes", v) },
+      { id: idOf(t, "filterMode"), label: `${name} filter mode`, kind: "int", min: 0, max: 1, def: 0, labels: FILTER_MODES, get: (s) => tp(s, t).filter.mode, set: (v) => setFilter(t, { mode: v >= 1 ? 1 : 0 }) },
     );
     defs.push({ id: idOf(t, "distortion"), label: `${name} distortion`, kind: "norm", min: 0, max: 1, def: 0, get: (s) => shown(s, t, "fx.distortion"), set: (v) => setLockable(t, "fx.distortion", v) });
     defs.push({ id: idOf(t, "arp"), label: `${name} arpeggiator`, kind: "bool", min: 0, max: 1, def: 0, get: (s) => (s.arp[t].on ? 1 : 0), set: (v) => setArp(t, { on: v >= 1 && trackProfile(getState().rig, t).melodic }) });

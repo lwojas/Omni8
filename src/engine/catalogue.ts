@@ -21,11 +21,10 @@ export interface SlotRig {
 export type TrackRig = readonly [SlotRig, SlotRig];
 export type Rig = readonly TrackRig[];
 
-/** The knob values of one slot in a pattern: `ENGINE_KNOBS` engine controls (unused ones 0), then LEVEL, then FILTER. */
+/** The knob values of one slot in a pattern: `ENGINE_KNOBS` engine controls (unused ones 0), then LEVEL. */
 export const ENGINE_KNOBS = 6;
 export const LEVEL_AT = ENGINE_KNOBS;
-export const FILTER_AT = ENGINE_KNOBS + 1;
-export const SLOT_KNOBS = ENGINE_KNOBS + 2;
+export const SLOT_KNOBS = ENGINE_KNOBS + 1;
 export const SLOT_NAMES = ["A", "B"] as const;
 
 /** Everything about one sound source: what a slot resolves to. */
@@ -47,8 +46,6 @@ export interface VoiceSpec {
   fixed: ReadonlyArray<readonly [param: number, value: number]>;
   /** Source gain trim in dB, for level balance between machines. */
   gainDb: number;
-  /** The slot gets a low-pass FILTER knob. The acid voice has its own filter and skips it. */
-  postFilter: boolean;
   chokeGroup?: number;
   /** Pitched voices: MIDI note of the instrument's `tune` (note pitch = note - rootMidi), playable range and a new step's note. */
   rootMidi?: number;
@@ -58,10 +55,9 @@ export interface VoiceSpec {
 }
 
 const LEVEL: ControlSpec = { key: "level", label: "LEVEL", param: -1, dest: "level", lo: 0, hi: 1, curve: "lin", unit: "%", def: 0.8 };
-const FILTER: ControlSpec = { key: "filter", label: "FILTER", param: -1, dest: "filter", lo: 150, hi: 20000, curve: "exp", unit: "Hz", def: 20000 };
 
-const voice = (v: Omit<VoiceSpec, "postFilter" | "fixed" | "pitched"> & Partial<Pick<VoiceSpec, "postFilter" | "fixed" | "pitched">>): VoiceSpec => ({
-  postFilter: true, fixed: [], pitched: false, ...v,
+const voice = (v: Omit<VoiceSpec, "fixed" | "pitched"> & Partial<Pick<VoiceSpec, "fixed" | "pitched">>): VoiceSpec => ({
+  fixed: [], pitched: false, ...v,
 });
 
 // --- drum voices: the six Pulse.8 machines, unchanged controls --------------------------------------
@@ -96,7 +92,7 @@ export const DRUM_VOICES: Readonly<Record<string, VoiceSpec>> = {
     ],
   }),
   chat: voice({
-    key: "drum:chat", engine: "drum", name: "CL HAT", short: "CH", desc: "METAL HAT · CLOSED", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
+    key: "drum:chat", engine: "drum", name: "CH", short: "CH", desc: "METAL HAT · CLOSED", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
     controls: [
       lin("tune", "PITCH", HiHatParam.Tune, -6, 6, 0, "st"),
       exp("decay", "DECAY", HiHatParam.Decay, 0.02, 0.18, 0.06, "s"),
@@ -105,7 +101,7 @@ export const DRUM_VOICES: Readonly<Record<string, VoiceSpec>> = {
     ],
   }),
   ohat: voice({
-    key: "drum:ohat", engine: "drum", name: "OP HAT", short: "OH", desc: "METAL HAT · OPEN", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
+    key: "drum:ohat", engine: "drum", name: "OH", short: "OH", desc: "METAL HAT · OPEN", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
     controls: [
       lin("tune", "PITCH", HiHatParam.Tune, -6, 6, 0, "st"),
       exp("decay", "DECAY", HiHatParam.Decay, 0.2, 1.1, 0.45, "s"),
@@ -130,7 +126,7 @@ export const DRUM_VOICE_KEYS = ["kick", "snare", "clap", "chat", "ohat", "tom"] 
 // --- the other engines ---------------------------------------------------------------------------------
 
 const ACID: VoiceSpec = voice({
-  key: "acid", engine: "acid", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--bass", pitched: true, postFilter: false,
+  key: "acid", engine: "acid", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--bass", pitched: true,
   controls: [
     // Ranges set from offline renders of the unchanged webdsp bass: above ~1 kHz the filter adds nothing at bass pitches, ENV MOD
     // saturates by ~0.5 on low notes, BITE past ~0.75 trades onset brightness and body level for onset loudness, DECAY below
@@ -240,7 +236,7 @@ export const SAMPLE_CONTROLS = {
 } as const;
 export const SAMPLE_MODES = ["ONE-SHOT", "LOOP"] as const;
 const SAMPLE: VoiceSpec = voice({
-  key: "sample", engine: "sample", name: "SAMPLE", short: "SMP", desc: "SHARED SAMPLE", accent: "--drum", gainDb: 0,
+  key: "sample", engine: "sample", name: "SMPL", short: "SMP", desc: "SHARED SAMPLE", accent: "--drum", gainDb: 0,
   controls: [
     { key: "mode", label: "PLAY", param: -1, dest: "sample", lo: 0, hi: 1, curve: "lin", unit: "", def: 0, steps: SAMPLE_MODES },
     { key: "start", label: "START", param: -1, dest: "sample", lo: 0, hi: 1, curve: "lin", unit: "%", def: 0 },
@@ -251,10 +247,12 @@ const SAMPLE: VoiceSpec = voice({
 
 const SINGLE: Readonly<Record<string, VoiceSpec>> = { acid: ACID, fm: FM, pad: PAD, pluck: PLUCK, saw: SAW, perc: PERC, sample: SAMPLE };
 
-/** The engine names, in selector order (the chips under the slot tabs). OFF is the ninth: an empty slot. */
+/** The engine names, in selector order (the chips under the slot tabs). OFF is the last: an empty slot.
+ * PLUCK and SAW are shelved (see docs/dev/shelved-engines.md): their voices below stay wired, but they are not offered, and a save
+ * that names one falls back to the starting slot. To bring one back, add its row here. */
 export const ENGINES: ReadonlyArray<{ id: EngineId; name: string }> = [
-  { id: "acid", name: "ACID" }, { id: "fm", name: "FM" }, { id: "pad", name: "PAD" }, { id: "pluck", name: "PLUCK" },
-  { id: "saw", name: "SAW" }, { id: "drum", name: "DRUM" }, { id: "perc", name: "PERC" }, { id: "sample", name: "SAMPLE" },
+  { id: "acid", name: "ACID" }, { id: "fm", name: "FM" }, { id: "pad", name: "PAD" },
+  { id: "drum", name: "DRUM" }, { id: "perc", name: "PERC" }, { id: "sample", name: "SAMPLE" },
   { id: "off", name: "OFF" },
 ];
 
@@ -268,27 +266,23 @@ export function voiceOf(slot: SlotRig): VoiceSpec | undefined {
 /** The variant a slot gets when its engine is chosen. `sample` is the library id a new SAMPLE slot starts on. */
 export const defaultVariant = (engine: EngineId, sample: string): string => (engine === "drum" ? "kick" : engine === "sample" ? sample : "");
 
-/** Every control a slot shows, in knob order: the engine's own, then LEVEL, then FILTER when the voice has one. The index of a control
- * is its index in the slot's sound array, except the last two, which live at `LEVEL_AT` / `FILTER_AT`. */
+/** Every control a slot shows, in knob order: the engine's own, then LEVEL. The index of a control is its index in the slot's sound
+ * array, except LEVEL, which lives at `LEVEL_AT`. (The filter and distortion are track inserts, not slot knobs.) */
 export function slotControls(v: VoiceSpec): Array<{ control: ControlSpec; at: number }> {
   const out = v.controls.map((control, at) => ({ control, at }));
   out.push({ control: LEVEL, at: LEVEL_AT });
-  if (v.postFilter) out.push({ control: FILTER, at: FILTER_AT });
   return out;
 }
 
 /** The control at sound index `at` of a slot, if the voice has one there. */
 export function controlAt(v: VoiceSpec | undefined, at: number): ControlSpec | undefined {
   if (!v) return undefined;
-  if (at === LEVEL_AT) return LEVEL;
-  if (at === FILTER_AT) return v.postFilter ? FILTER : undefined;
-  return v.controls[at];
+  return at === LEVEL_AT ? LEVEL : v.controls[at];
 }
 
-/** A slot's knob values at the engine's defaults (unused positions 0; the filter fully open). */
+/** A slot's knob values at the engine's defaults (unused positions 0). */
 export function defaultSlotSound(v: VoiceSpec | undefined): number[] {
   const out = new Array<number>(SLOT_KNOBS).fill(0);
-  out[FILTER_AT] = 1;
   if (!v) return out;
   v.controls.forEach((c, i) => { out[i] = unitsToNorm(c, c.def); });
   out[LEVEL_AT] = unitsToNorm(LEVEL, LEVEL.def);
@@ -304,10 +298,12 @@ export const emptySlot = (): SlotRig => ({ ...OFF });
 export interface TrackProfile {
   role: Role;
   melodic: boolean;
+  /** The track's INSERT FX: distortion when a slot is a synth (a pitched engine), otherwise the LP/HP filter. */
+  insert: "dist" | "filter";
   accent: "--drum" | "--bass" | "--tone";
   /** "KICK + SAMPLE", or "EMPTY". */
   name: string;
-  /** The first slot's short name, and both slots' ("KCK+SMP"): what a narrow rail shows. */
+  /** The first slot's short name, and both slots' names with no spaces ("KICK+SMPL"): the one-line label of the track rail. */
   short: string;
   tag: string;
   /** The machine description of the first slot (or "EMPTY"). */
@@ -333,10 +329,11 @@ export function trackProfile(rig: Rig, track: number): TrackProfile {
     p = {
       role: !lead ? "drum" : lead.engine === "acid" ? "bass" : "tone",
       melodic: !!lead,
+      insert: lead ? "dist" : "filter",
       accent: (lead ?? first)?.accent ?? "--drum",
       name: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.name).join(" + ") || "EMPTY",
       short: first?.short ?? "---",
-      tag: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.short).join("+") || "---",
+      tag: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.name).join("+") || "---",
       desc: first?.desc ?? "EMPTY",
       voices,
       lead,
@@ -361,7 +358,7 @@ export function defaultRig(sample: { thump: string; snap: string; rim: string; s
     [s("sample", sample.rim), s("sample", sample.shaker)],
     [s("acid"), emptySlot()],
     [s("acid"), s("sample", sample.snap)],
-    [s("pluck"), s("pad")],
+    [s("fm"), s("pad")],
   ];
 }
 

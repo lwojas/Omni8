@@ -16,7 +16,7 @@ import { SLOT_KNOBS, SLOT_NAMES } from "./catalogue";
 import type { AppState, Step, TrackPattern } from "./state";
 
 /** What a lock drives: a knob of one slot (`control` is its position in the slot's sound array), one of the track's FX sends, or its distortion insert. */
-export type LockTarget = { kind: "sound"; slot: 0 | 1; control: number } | { kind: "send"; send: "dly" | "rev" } | { kind: "dist" };
+export type LockTarget = { kind: "sound"; slot: 0 | 1; control: number } | { kind: "send"; send: "dly" | "rev" } | { kind: "dist" } | { kind: "filter"; param: "cut" | "res" };
 
 export interface LockParam {
   /** Stable id: the key in `Step.parameterLocks` (saved with the project, so never renamed). */
@@ -43,6 +43,8 @@ const LOCKS: readonly LockParam[] = [
   { id: "fx.delaySend", label: "DLY", target: { kind: "send", send: "dly" }, base: (tp) => tp.dly.send },
   { id: "fx.reverbSend", label: "REV", target: { kind: "send", send: "rev" }, base: (tp) => tp.rev.send },
   { id: "fx.distortion", label: "DIST", target: { kind: "dist" }, base: (tp) => tp.dist },
+  { id: "fx.filterCut", label: "CUT", target: { kind: "filter", param: "cut" }, base: (tp) => tp.filter.cut },
+  { id: "fx.filterRes", label: "RES", target: { kind: "filter", param: "res" }, base: (tp) => tp.filter.res },
 ];
 const BY_ID = new Map(LOCKS.map((p) => [p.id, p]));
 

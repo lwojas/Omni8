@@ -1,8 +1,8 @@
 // The two-slot model: what a track note plays, what swapping an engine changes, and what survives a save.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setDrumVoice, setSlotEngine, setSlotSample, setSlotTab, setSound } from "../src/engine/actions";
+import { setDistortion, setDrumVoice, setFilter, setSlotEngine, setSlotSample, setSlotTab, setSound } from "../src/engine/actions";
 import { Groovebox } from "../src/engine/audio";
-import { defaultSlotSound, FILTER_AT, LEVEL_AT, normalizeRig, SAMPLE_CONTROLS, SLOT_KNOBS, trackProfile, voiceOf, type Rig } from "../src/engine/catalogue";
+import { defaultSlotSound, ENGINES, LEVEL_AT, normalizeRig, SAMPLE_CONTROLS, SLOT_KNOBS, trackProfile, voiceOf, type Rig } from "../src/engine/catalogue";
 import { fromHostSnapshot, toHostSnapshot } from "../src/engine/persist";
 import { FACTORY_SAMPLES, factoryPcm, wavBytes } from "../src/engine/samples";
 import { playSlots } from "../src/engine/slots";
@@ -130,11 +130,10 @@ describe("changing an engine", () => {
     s[SAMPLE_CONTROLS.start] = 0.4;
     s[SAMPLE_CONTROLS.end] = 0.7;
     s[LEVEL_AT] = 0.33;
-    s[FILTER_AT] = 0.5;
     setSlotSample(0, 1, "zap");
     expect(getState().rig[0][1]).toEqual({ engine: "sample", variant: "zap" });
     const after = tp(0).slots[1];
-    expect([after[SAMPLE_CONTROLS.mode], after[SAMPLE_CONTROLS.start], after[SAMPLE_CONTROLS.end], after[LEVEL_AT], after[FILTER_AT]]).toEqual([1, 0, 1, 0.33, 0.5]);
+    expect([after[SAMPLE_CONTROLS.mode], after[SAMPLE_CONTROLS.start], after[SAMPLE_CONTROLS.end], after[LEVEL_AT]]).toEqual([1, 0, 1, 0.33]);
   });
 
   it("changes a drum voice with that voice's knobs, and ignores a voice that does not exist", () => {
@@ -156,6 +155,52 @@ describe("changing an engine", () => {
   it("only ever changes the slot tab through setSlotTab", () => {
     setSlotTab(1);
     expect(getState().slot).toBe(1);
+  });
+});
+
+describe("the INSERT FX follows the slots", () => {
+  it("is distortion when a slot is a synth, and the LP/HP filter otherwise", () => {
+    expect(DEFAULT_RIG.map((_, t) => trackProfile(DEFAULT_RIG, t).insert)).toEqual(["filter", "filter", "filter", "filter", "filter", "dist", "dist", "dist"]);
+  });
+
+  it("switches the insert off and its locks away when the track changes kind", () => {
+    setFilter(0, { mode: 1, cut: 0.4, res: 0.5 });
+    tp(0).steps[1].parameterLocks = { "fx.filterCut": 0.2, "fx.delaySend": 0.3 };
+    setSlotEngine(0, 0, "acid");
+    expect(trackProfile(getState().rig, 0).insert).toBe("dist");
+    expect(tp(0).filter).toEqual({ mode: 0, cut: 1, res: 0 });
+    expect(tp(0).steps[1].parameterLocks).toEqual({ "fx.delaySend": 0.3 });
+    setDistortion(0, 0.7);
+    tp(0).steps[2].parameterLocks = { "fx.distortion": 0.9 };
+    setSlotEngine(0, 0, "drum");
+    setSlotEngine(0, 1, "off");
+    expect(tp(0).dist).toBe(0);
+    expect(tp(0).steps[2].parameterLocks).toBeUndefined();
+  });
+
+  it("changing a filter mode puts the cutoff at that mode's open end", () => {
+    setFilter(2, { mode: 1 });
+    expect(tp(2).filter).toMatchObject({ mode: 1, cut: 0 });
+    setFilter(2, { mode: 0 });
+    expect(tp(2).filter.cut).toBe(1);
+  });
+});
+
+describe("one-line names and the shelved engines", () => {
+  it("labels the rail with short names: CH and OH for the hats, SMPL for a sample", () => {
+    expect(trackProfile(DEFAULT_RIG, 2).tag).toBe("CH");
+    expect(trackProfile(DEFAULT_RIG, 3).tag).toBe("OH");
+    expect(trackProfile(DEFAULT_RIG, 0).tag).toBe("KICK+SMPL");
+    expect(trackProfile(DEFAULT_RIG, 4).tag).toBe("SMPL+SMPL");
+    for (let t = 0; t < NUM_TRACKS; t++) expect(trackProfile(DEFAULT_RIG, t).tag).not.toMatch(/\s|SAMPLE|HAT/);
+  });
+
+  it("offers neither PLUCK nor SAW, keeps their voices wired, and refuses them from a save", () => {
+    expect(ENGINES.map((e) => e.id)).not.toContain("pluck");
+    expect(ENGINES.map((e) => e.id)).not.toContain("saw");
+    expect(voiceOf({ engine: "pluck", variant: "" })?.kind).toBeDefined();
+    expect(voiceOf({ engine: "saw", variant: "" })?.kind).toBeDefined();
+    expect(normalizeRig([[{ engine: "pluck", variant: "" }, { engine: "saw", variant: "" }]], DEFAULT_RIG, NUM_TRACKS)[0]).toEqual(DEFAULT_RIG[0]);
   });
 });
 

@@ -2,7 +2,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { DRUM_VOICE_KEYS, DRUM_VOICES, ENGINES, defaultSlotSound, slotControls, SLOT_NAMES, type EngineId } from "../engine/catalogue";
 import {
-  clearChain, clearPattern, clearStepLocks, removeChainEntry, setDelay, setDrumVoice, setLevel, setLockable, setPlockMode, setPunchParam,
+  clearChain, clearPattern, clearStepLocks, removeChainEntry, setDelay, setDrumVoice, setFilter, setLevel, setLockable, setPlockMode, setPunchParam,
   setPunchSend, setReverb, setSlotEngine, setSlotTab, setSound, setSoundControl, setSweep, toggleMute, toggleSolo,
 } from "../engine/actions";
 import { controller } from "../engine/controller";
@@ -10,7 +10,7 @@ import { PING_PONG, PING_PONG_NOW_STEPS, punchById, PUNCHES, SWEEPS } from "../e
 import { hasLocks, lockStep, soundParam } from "../engine/plock";
 import { formatControl, TRACKS } from "../engine/spec";
 import { BANK_SIZE, defaultLevel, MAX_CHAIN, NUM_PATTERNS } from "../engine/state";
-import { BEAT_DIVISIONS, defaultDelaySend, defaultReverbSend, DELAY_MODES, formatDist, formatFreeDelay } from "../engine/trackfx";
+import { BEAT_DIVISIONS, defaultDelaySend, defaultReverbSend, DELAY_MODES, filterOpen, FILTER_MODES, formatDist, formatFilterHz, formatFreeDelay } from "../engine/trackfx";
 import { getState, setState, useStore } from "../engine/store";
 import { Knob, Slider } from "./controls";
 import { Modal } from "./Modal";
@@ -88,13 +88,33 @@ function EngineChips({ track, slot }: { track: number; slot: 0 | 1 }) {
   );
 }
 
-/** The track's distortion insert (both slots ▶ distortion ▶ fader): one amount, lockable like the knobs. Under the knobs, on every layout. */
+/** The INSERT FX of a track with a synth: distortion (both slots ▶ distortion ▶ fader): one amount, lockable like the knobs. Under the knobs, on every layout. */
 function DistortionBar({ track, locks }: { track: number; locks: Record<string, number> | undefined }) {
   const base = useStore((s) => s.patterns[s.pattern].tracks[track].dist ?? 0);
   const dist = locks?.["fx.distortion"] ?? base;
   return (
     <div className="dist-bar" role="group" aria-label="Distortion">
       <Slider label="DIST" value={dist} def={0} readout={formatDist(dist)} locked={locks?.["fx.distortion"] !== undefined} onChange={(v) => setLockable(track, "fx.distortion", v)} />
+    </div>
+  );
+}
+
+/** The INSERT FX of a track with no synth: efem's resonant filter, cutoff and resonance (lockable, like the knobs) and LP/HP. */
+function FilterBar({ track, locks }: { track: number; locks: Record<string, number> | undefined }) {
+  const filter = useStore((s) => s.patterns[s.pattern].tracks[track].filter);
+  const cut = locks?.["fx.filterCut"] ?? filter.cut;
+  const res = locks?.["fx.filterRes"] ?? filter.res;
+  return (
+    <div className="filter-bar" role="group" aria-label="Track filter">
+      <Slider label="CUT" value={cut} def={filterOpen(filter.mode)} readout={formatFilterHz(cut)} locked={locks?.["fx.filterCut"] !== undefined} onChange={(v) => setLockable(track, "fx.filterCut", v)} />
+      <Slider label="RES" value={res} def={0} locked={locks?.["fx.filterRes"] !== undefined} onChange={(v) => setLockable(track, "fx.filterRes", v)} />
+      <div className="seg" role="group" aria-label="Filter type">
+        {FILTER_MODES.map((m, i) => (
+          <button key={m} type="button" className="chip" data-active={filter.mode === i} aria-pressed={filter.mode === i} onClick={() => setFilter(track, { mode: i as 0 | 1 })}>
+            {m}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -163,7 +183,7 @@ export function SoundPanel() {
         })}
         {!voice && <span className="silk empty-slot">PICK AN ENGINE FOR SLOT {SLOT_NAMES[slot]}</span>}
       </div>
-      <DistortionBar track={track} locks={locks} />
+      {profile.insert === "dist" ? <DistortionBar track={track} locks={locks} /> : <FilterBar track={track} locks={locks} />}
       </div>
       <PlockBar track={track} />
       <div className="sends" role="group" aria-label="FX sends">
@@ -198,7 +218,7 @@ function MixRow({ track }: { track: number }) {
   const solo = useStore((s) => s.solos[track]);
   return (
     <div className="mix-row" style={accentOf(spec)} data-dim={mute}>
-      <button type="button" className="mix-name" onClick={() => setState({ focus: track, selStep: -1 })}>{spec.name}</button>
+      <button type="button" className="mix-name" onClick={() => setState({ focus: track, selStep: -1 })}>{spec.tag}</button>
       <Slider label="LVL" value={level} def={defaultLevel(track)} onChange={(v) => setLevel(track, v)} />
       <span className="mix-ms">
         <button type="button" className="btn sm" data-active={mute} aria-pressed={mute} aria-label={`Mute ${spec.name}`} onClick={() => toggleMute(track)}>M</button>

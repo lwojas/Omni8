@@ -10,6 +10,9 @@ Not done yet: audible check by ear, the plugin build (`vst/`, CMake names, deplo
 
 This document was the Stage 2 audit and the plan for Stages 3 to 6.
 
+> **Update:** PLUCK and SAW are shelved ([shelved-engines.md](shelved-engines.md)). The per-slot FILTER knob is gone: INSERT FX is
+> distortion on a track with a synth and efem's LP/HP filter (CUT, RES, LP/HP) on any other track. The rail labels are one line (CH, OH, SMPL).
+
 ## 1. Where Pulse.8 hard-codes "one instrument per track"
 
 Everything is driven by one static table, `TRACKS` in `engine/spec.ts`, whose rows carry `kind` (webdsp instrument),

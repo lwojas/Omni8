@@ -6,7 +6,7 @@ import { defaultSlotSound, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, trackProfile, voice
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
 import { clearTrackSteps, GATES, newPattern, PAGE, randomizeTrack, type Pattern } from "./state";
-import { BEAT_DIVISIONS, type DelaySend, type ReverbSend } from "./trackfx";
+import { BEAT_DIVISIONS, filterOpen, newFilter, type DelaySend, type ReverbSend, type TrackFilter } from "./trackfx";
 import { editPattern, getState, setState } from "./store";
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
@@ -109,6 +109,7 @@ export function setLockable(track: number, id: string, value: number): void {
   }
   if (p.target.kind === "sound") setSound(track, p.target.slot, p.target.control, value);
   else if (p.target.kind === "dist") setDistortion(track, value);
+  else if (p.target.kind === "filter") setFilter(track, { [p.target.param]: value });
   else if (p.target.send === "dly") setDelay(track, { send: value });
   else setReverb(track, { send: value });
 }
@@ -145,6 +146,8 @@ function replaceSlot(track: number, slot: 0 | 1, next: SlotRig, keep?: (at: numb
   const fresh = defaultSlotSound(after.voices[slot]);
   const lockPrefix = `slot.${slot === 0 ? "a" : "b"}.`;
   const notesMove = before.melodic !== after.melodic || before.lead !== after.lead;
+  // the INSERT FX is distortion with a synth and the filter without: the one that goes away is switched off, with its locks
+  const insertMoves = before.insert !== after.insert;
   const patterns = st.patterns.map((p): Pattern => ({
     ...p,
     tracks: p.tracks.map((tp, t) => {
@@ -152,14 +155,14 @@ function replaceSlot(track: number, slot: 0 | 1, next: SlotRig, keep?: (at: numb
       const sound = tp.slots[slot].map((v, at) => (keep?.(at) ? v : fresh[at]));
       const slots: [number[], number[]] = slot === 0 ? [sound, tp.slots[1]] : [tp.slots[0], sound];
       const steps = tp.steps.map((s) => {
-        const locks = s.parameterLocks && Object.fromEntries(Object.entries(s.parameterLocks).filter(([id]) => !id.startsWith(lockPrefix)));
+        const locks = s.parameterLocks && Object.fromEntries(Object.entries(s.parameterLocks).filter(([id]) => !id.startsWith(lockPrefix) && !(insertMoves && (id === "fx.distortion" || id.startsWith("fx.filter")))));
         const hasLocks = !!locks && Object.keys(locks).length > 0;
         const note = !notesMove ? s.note : !after.melodic ? after.defaultNote : Math.min(after.noteHi, Math.max(after.noteLo, before.melodic ? s.note : after.defaultNote));
         if (note === s.note && hasLocks === !!s.parameterLocks && (!locks || Object.keys(locks).length === Object.keys(s.parameterLocks!).length)) return s;
         const { parameterLocks: _drop, ...rest } = s;
         return { ...rest, note, ...(after.melodic ? {} : { slide: false }), ...(hasLocks ? { parameterLocks: locks } : {}) };
       });
-      return { ...tp, slots, steps };
+      return { ...tp, slots, steps, ...(insertMoves ? { dist: 0, filter: newFilter() } : {}) };
     }),
   }));
   setState({
@@ -219,7 +222,20 @@ export function setReverb(track: number, patch: Partial<ReverbSend>): void {
   });
 }
 
-/** A track's distortion amount (0..1): the INSERT FX. */
+/** Edit a track's filter insert. Changing the mode puts the cutoff at the new mode's open end, so switching never leaves the track closed. */
+export function setFilter(track: number, patch: Partial<TrackFilter>): void {
+  editPattern((p) => {
+    const f = p.tracks[track].filter;
+    if (patch.mode !== undefined && patch.mode !== f.mode) {
+      f.mode = patch.mode === 1 ? 1 : 0;
+      f.cut = filterOpen(f.mode);
+    }
+    if (patch.cut !== undefined) f.cut = clamp01(patch.cut);
+    if (patch.res !== undefined) f.res = clamp01(patch.res);
+  });
+}
+
+/** A track's distortion amount (0..1): the INSERT FX of a track with a synth. */
 export function setDistortion(track: number, value: number): void {
   editPattern((p) => { p.tracks[track].dist = clamp01(value); });
 }

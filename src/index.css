@@ -281,7 +281,9 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
 .slider-label { left: 8px; }
 .slider-value { right: 8px; }
 .slider[data-locked] { border-color: var(--fx); }
-.dist-bar { margin-top: 10px; }
+.dist-bar, .filter-bar { margin-top: 10px; }
+.filter-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.filter-bar .slider { height: 32px; }
 .dist-bar .slider { height: 32px; }
 
 /* ---- track FX (delay + reverb sends) ---------------------------------------------------------- */
@@ -413,7 +415,7 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   .rail-main { height: auto; place-items: stretch; display: flex; align-items: center; gap: 8px; padding: 0 8px; min-width: 0; text-align: left; border-bottom-width: 1px; border-left: 4px solid var(--acc); }
   .rail-no { display: inline; font-size: 10px; opacity: 0.7; }
   .rail-name { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
-  .rail-name .long { display: inline; font-size: 13px; letter-spacing: 0.04em; }
+  .rail-name .long { display: block; font-size: 13px; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rail-name .short { display: none; }
   .rail-name small { display: block; font-size: 8px; letter-spacing: 0.08em; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rail-ms { display: flex; flex-direction: column; gap: 3px; }
@@ -461,6 +463,12 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   .sound .chip { min-height: 28px; padding: 2px 4px; font-size: 10px; min-width: 0; white-space: normal; line-height: 1.1; overflow-wrap: anywhere; }
   .sound-main { grid-area: knobs; align-self: center; min-width: 0; }
   .sound .knobs { --ks: var(--ks-lg); margin: 0; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); }
+  .dist-bar, .filter-bar { margin-top: 6px; }
+  .filter-bar { gap: 5px; }
+  .filter-bar .slider { height: 24px; }
+  .filter-bar .slider-label, .filter-bar .slider-value { font-size: 9px; letter-spacing: 0.04em; }
+  .filter-bar .slider-label { left: 5px; }
+  .filter-bar .slider-value { right: 5px; }
   .dist-bar { margin-top: 6px; }
   .dist-bar .slider { height: 24px; }
   .dist-bar .slider-label, .dist-bar .slider-value { font-size: 9px; letter-spacing: 0.04em; }

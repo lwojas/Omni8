@@ -31,9 +31,9 @@ describe("mapping", () => {
   it("compiles against the real parameters with no warnings", () => {
     expect(compileMapping(midiMapping, bus).warnings).toEqual([]);
   });
-  it("maps all eight knobs of both slots of every track (the table in mapping.ts matches the registry)", () => {
+  it("maps all seven knobs of both slots of every track (the table in mapping.ts matches the registry)", () => {
     const mapped = compileMapping(midiMapping, bus).byParam;
-    for (let t = 1; t <= 8; t++) for (const slot of ["a", "b"]) for (let k = 1; k <= 8; k++) expect(mapped.has(`track.${t}.${slot}.${k}`)).toBe(true);
+    for (let t = 1; t <= 8; t++) for (const slot of ["a", "b"]) for (let k = 1; k <= 7; k++) expect(mapped.has(`track.${t}.${slot}.${k}`)).toBe(true);
   });
   it("reports unknown parameters, bad channels and doubled CCs instead of failing", () => {
     const m: MidiMapping = {
@@ -105,7 +105,7 @@ describe("input", () => {
     const { control } = rig();
     control.handle([0xb7, 70, 127]); // channel 8 = pluck + pad: CC 70 is slot A knob 1
     expect(getParam("track.8.a.1", getState())).toBe(1);
-    control.handle([0xb5, 74, 0]); // channel 6 = acid, CC 74 = slot A knob 5
+    control.handle([0xb5, 76, 0]); // channel 6 = acid, CC 76 = slot A knob 5
     expect(getState().patterns[0].tracks[5].slots[0][4]).toBe(0);
     control.handle([0xb5, 103, 127]); // slot B of the same track has its own CCs (102-107)
     expect(getParam("track.6.b.2", getState())).toBe(1); // slot B of the first acid track is empty: the knob is stored, nothing hears it

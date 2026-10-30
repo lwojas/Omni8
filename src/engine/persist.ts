@@ -8,7 +8,7 @@ import { NUM_TRACKS } from "./spec";
 import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type Pattern } from "./state";
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
-import { newDelay, newDist, newReverb } from "./trackfx";
+import { filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
 import { normalizeScale, type ProjectScale } from "./scale";
 import { CURRENT_STORE, idbRequest, openDb, SAVES_STORE, txDone } from "./db";
 import { getState, observe, setState } from "./store";
@@ -53,6 +53,10 @@ function normalize(p: Pattern): void {
     if (!t.dly) t.dly = newDelay(i);
     if (!t.rev) t.rev = newReverb(i);
     if (typeof t.punch !== "boolean") t.punch = true;
+    if (!t.filter || typeof t.filter !== "object") t.filter = newFilter();
+    t.filter.mode = t.filter.mode === 1 ? 1 : 0;
+    t.filter.cut = Number.isFinite(t.filter.cut) ? Math.min(1, Math.max(0, t.filter.cut)) : filterOpen(t.filter.mode);
+    t.filter.res = Number.isFinite(t.filter.res) ? Math.min(1, Math.max(0, t.filter.res)) : 0;
     t.dist = typeof t.dist === "number" && Number.isFinite(t.dist) ? Math.min(1, Math.max(0, t.dist)) : newDist();
     if (Array.isArray(t.slots)) for (const sl of t.slots) if (Array.isArray(sl)) sl.forEach((v, k) => { if (Number.isFinite(v)) sl[k] = Math.min(1, Math.max(0, v)); });
     // last step: whole numbers inside the pattern; anything else (or the full length) is "no last step"

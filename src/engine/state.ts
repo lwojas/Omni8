@@ -7,7 +7,7 @@ import { DEFAULT_SAMPLES, FACTORY_SAMPLES, type SampleInfo } from "./samples";
 import { defaultArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { defaultScale, isChromatic, notesInRange, rootAtOrAbove, type ProjectScale } from "./scale";
-import { newDelay, newDist, newReverb, type DelaySend, type ReverbSend } from "./trackfx";
+import { newDelay, newDist, newFilter, newReverb, type DelaySend, type ReverbSend, type TrackFilter } from "./trackfx";
 
 export const MAX_STEPS = 64;
 export const PAGE = 16;
@@ -59,8 +59,10 @@ export interface TrackPattern {
   /** Track sends (mixing): delay and reverb. */
   dly: DelaySend;
   rev: ReverbSend;
-  /** The track's distortion insert (INSERT FX), 0..1 (0 = off; lockable). */
+  /** The distortion insert, 0..1 (0 = off; lockable). Only a track with a synth shows it; on any other track it is held at 0. */
   dist: number;
+  /** The LP/HP filter insert. Only a track with no synth shows it; on a synth track it is held open. */
+  filter: TrackFilter;
   /** Punch FX send gate: false keeps the track out of the punch section (neither fed nor taken over). */
   punch: boolean;
   /** Octave shift for melodic tracks. */
@@ -205,6 +207,7 @@ export function newTrackPattern(rig: Rig, track: number): TrackPattern {
     dly: newDelay(track),
     rev: newReverb(track),
     dist: newDist(),
+    filter: newFilter(),
     punch: true,
     oct: 0,
   };
