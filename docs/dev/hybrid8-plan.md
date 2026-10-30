@@ -1,7 +1,14 @@
 # Hybrid.8: architecture audit and implementation plan
 
-Status: Stage 1 done (cloned from PulseEight@fe9ee5b, history flattened, identity `hybrid8`, 164 tests + build green).
-This document is the Stage 2 audit and the plan for Stages 3 to 6.
+Status: Stages 1 to 5 implemented; Stage 6 partly done. 194 tests and the production build pass; phone (360 px) and desktop
+were driven in a real browser (slot tabs, engine swap during playback, sample modal) with no console errors and no horizontal scroll.
+
+Decisions taken: per-trigger envelope added to webdsp (branch `per-trigger-envelope` in the sibling repo, not merged or pushed);
+factory samples are generated in code; native `Sequence` sample events still lack start/end/decay (web build is the target).
+
+Not done yet: audible check by ear, the plugin build (`vst/`, CMake names, deploy workflow) and the `docs/guide` pages still say Pulse.8.
+
+This document was the Stage 2 audit and the plan for Stages 3 to 6.
 
 ## 1. Where Pulse.8 hard-codes "one instrument per track"
 
