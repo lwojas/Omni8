@@ -1,6 +1,6 @@
-# Pulse.8 documentation
+# Hybrid.8 documentation
 
-## Using Pulse.8
+## Using Hybrid.8
 
 The **[User Guide](guide/01-getting-started.md)** walks through the instrument in the order you will meet it.
 
@@ -16,7 +16,7 @@ The **[User Guide](guide/01-getting-started.md)** walks through the instrument i
 | [8 · MIDI](guide/08-midi.md) | Controllers, DAWs, clock sync |
 | [9 · Reference](guide/09-reference.md) | Limits, tables, shortcuts, troubleshooting |
 
-## Building on Pulse.8
+## Building on Hybrid.8
 
 The **developer documentation** explains how it works and how to change it.
 

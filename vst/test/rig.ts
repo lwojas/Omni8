@@ -1,4 +1,4 @@
-// The end-to-end rig: Pulse.8's own page code running in Node, through webvst's page shim, against the real plugin engine in a child
+// The end-to-end rig: Hybrid.8's own page code running in Node, through webvst's page shim, against the real plugin engine in a child
 // process (harness.cpp), with a DAW simulated here: a transport that advances in real time and a MIDI queue. The page cannot tell it
 // from the plugin's WebView, so what is measured is what the plugin plays.
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -22,7 +22,7 @@ export function harnessBinary(): string | null {
       if (e.isDirectory()) {
         const r = found(p);
         if (r) return r;
-      } else if (e.name === "Pulse8Harness" && (fs.statSync(p).mode & 0o111) !== 0) return p;
+      } else if (e.name === "Hybrid8Harness" && (fs.statSync(p).mode & 0o111) !== 0) return p;
     }
     return null;
   };
@@ -53,7 +53,7 @@ export interface Rig {
 
 export async function startRig(): Promise<Rig> {
   const bin = harnessBinary();
-  if (!bin) throw new Error("Pulse8Harness is not built: npm run vst:e2e");
+  if (!bin) throw new Error("Hybrid8Harness is not built: npm run vst:e2e");
   const child: ChildProcessWithoutNullStreams = spawn(bin, [], { stdio: ["pipe", "pipe", "inherit"] });
   const lines = readline.createInterface({ input: child.stdout });
   const waiting: Array<(v: Record<string, unknown>) => void> = [];
@@ -84,7 +84,7 @@ export async function startRig(): Promise<Rig> {
     },
   };
   Object.defineProperty(globalThis, "navigator", { value: {}, configurable: true });
-  const webvst = process.env.PULSE8_WEBVST_DIR ?? path.join(here, "../../../webvst");
+  const webvst = process.env.HYBRID8_WEBVST_DIR ?? path.join(here, "../../../webvst");
   // eslint-disable-next-line no-eval
   (0, eval)(fs.readFileSync(path.join(webvst, "src/shim.js"), "utf8"));
 
@@ -133,7 +133,7 @@ export async function startRig(): Promise<Rig> {
       while (daw.ppq < ppq) await wait(0.01);
     },
     audio: async () => {
-      const file = path.join(os.tmpdir(), `pulse8-e2e-${process.pid}.f32`);
+      const file = path.join(os.tmpdir(), `hybrid8-e2e-${process.pid}.f32`);
       // between renders: the pump is mid-round-trip only briefly, so ask through the same queue
       await ask({ op: "dump", path: file });
       const buf = fs.readFileSync(file);

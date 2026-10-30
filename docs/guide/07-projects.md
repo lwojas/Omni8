@@ -2,7 +2,7 @@
 
 ## Autosave
 
-Pulse.8 saves automatically about half a second after you change anything, and again the moment you leave the page.
+Hybrid.8 saves automatically about half a second after you change anything, and again the moment you leave the page.
 Reload, close the tab, come back tomorrow: you are where you stopped. Autosave lives in your browser's IndexedDB, so
 it is private to that browser on that device.
 
@@ -19,16 +19,16 @@ WRITE/ERASE arming, the current screen, and other performance state.
 
 **☰ → Project file**
 
-- **EXPORT** downloads the project as `<name>.pulse8.json`.
+- **EXPORT** downloads the project as `<name>.hybrid8.json`.
 - **IMPORT** loads a file you exported.
 
-Exports are how you back up work, move it to another device, or share it. Projects from earlier versions of Pulse.8 are
+Exports are how you back up work, move it to another device, or share it. Projects from earlier versions of Hybrid.8 are
 upgraded automatically when they load.
 
 ## When storage is blocked
 
-Private or incognito windows, and browsers set to refuse site data, do not allow storage. Pulse.8 tells you: the SAVE
-button shows a warning, and nothing is autosaved. Open Pulse.8 in a normal window, or use **EXPORT** to keep your work
+Private or incognito windows, and browsers set to refuse site data, do not allow storage. Hybrid.8 tells you: the SAVE
+button shows a warning, and nothing is autosaved. Open Hybrid.8 in a normal window, or use **EXPORT** to keep your work
 as a file.
 
 ## Display

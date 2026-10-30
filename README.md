@@ -1,17 +1,19 @@
-# Pulse.8
+# Hybrid.8
 
-**A groovebox for the browser.** Six drums, an acid bass, an FM voice, nine performance effects you play by hand and
-record, and 64 patterns that chain into songs. It opens in one tap, runs on a phone as well as a desktop, and keeps
+**A groovebox for the browser, where every track is a two-slot instrument.** Each of the eight tracks holds two sound engines that
+play together: a drum and a sample, two samples, an acid bass and a sample, an FM and a pad. Nine performance effects you play by
+hand and record, and 64 patterns that chain into songs. It opens in one tap, runs on a phone as well as a desktop, and keeps
 everything you make.
 
-Pulse.8 is not an emulation of any machine. It draws on the tradition of the classic grooveboxes (step sequencing,
+Hybrid.8 is not an emulation of any machine. It draws on the tradition of the classic grooveboxes (step sequencing,
 punch-in effects, a squelching bass line, a tight drum kit) and builds its own instrument from it: its own sound
 engine, its own workflow, its own interface.
 
 ## What you get
 
-- **Eight tracks.** Kick, snare, closed and open hat, clap, perc, **ACID** bass with accent and slide, and a two-operator
-  **FM** voice. Every track has a handful of macro knobs tuned so the whole travel sounds good.
+- **Eight tracks, two slots each.** Pick an engine per slot: **ACID** bass (with accent and slide), **FM**, **PAD**, **DRUM** (kick,
+  snare, clap, hats, tom), **PERC** or a **SAMPLE** from a library shared by every track. Each has a handful of macro knobs tuned so
+  the whole travel sounds good, and each track an INSERT FX: distortion for synths, an LP/HP filter for the rest.
 - **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, hold to accent, swing, a scale-aware
   keyboard, and an arpeggiator on the melodic tracks.
 - **Punch FX.** Hold a pad and the effect sweeps in: filter, drive, crush, phaser, flanger, dub echo, roll, reverb, filter
@@ -27,18 +29,17 @@ engine, its own workflow, its own interface.
 
 ## Start
 
-1. Open Pulse.8 and **tap START**. A demo groove is already playing.
-2. Mute a track, load a different **KIT**, turn the **ACID** filter, hold **FILTER** on the punch pads.
+1. Open Hybrid.8 and **tap START**. A demo groove is already playing.
+2. Mute a track, give slot **B** of a track a different engine or sample, turn the **ACID** filter, hold **FILTER** on the punch pads.
 3. Press **WRITE**, hold a pad through a loop, and listen to your move come back round.
 
 The [User Guide](docs/guide/01-getting-started.md) takes it from there.
 
 ## Run it yourself
 
-Pulse.8 is built on [webdsp](https://github.com/lwojas/webdsp), which sits beside it as a sibling checkout.
+Hybrid.8 is built on [webdsp](https://github.com/lwojas/webdsp), which `npm install` fetches from GitHub.
 
 ```bash
-git clone https://github.com/lwojas/webdsp ../webdsp && (cd ../webdsp && npm ci)
 npm install
 npm run dev        # http://localhost:5175
 npm test           # the logic test suite
@@ -48,7 +49,7 @@ npm run build      # type-check and build to dist/
 A GitHub Actions workflow tests, builds and publishes to GitHub Pages on every push to `main`.
 
 **Optional: a VST3 plugin**, built locally (not in CI) from the [webvst](https://github.com/lwojas/webvst) host, which
-needs a sibling checkout like webdsp. `npm run vst:build` produces `Pulse8.vst3` to copy into your plug-ins folder; the
+needs a sibling checkout like webdsp. `npm run vst:build` produces `Hybrid8.vst3` to copy into your plug-ins folder; the
 plugin loads the hosted app (or a dev server, see the doc). In the DAW it follows the transport, plays the song on the audio thread
 (window open or closed, offline bounce included) and plays DAW MIDI natively. `npm run vst:e2e` checks all of it headless. See
 [VST3 build](docs/dev/vst.md).
@@ -66,12 +67,12 @@ plugin loads the hosted app (or a dev server, see the doc). In the DAW it follow
 
 | | |
 |---|---|
-| Tracks | 8: 6 drums, ACID bass, FM |
+| Tracks | 8, two slots each (6 engines) |
 | Patterns | 64, each 16 / 32 / 48 / 64 steps |
 | Tempo | 60 – 200 BPM, swing 50 – 75% |
 | Punch FX | 9, sweepable, writable |
 | Track FX | Delay (free or tempo-synced) and reverb on every track |
-| Storage | Autosave and named saves in the browser; export/import as `.pulse8.json` |
+| Storage | Autosave and named saves in the browser; export/import as `.hybrid8.json` |
 | Control | MIDI CC, bank/program change, clock follow |
 | Stack | TypeScript, React, Vite, webdsp (AudioWorklet) |
 

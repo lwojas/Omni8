@@ -60,7 +60,7 @@ const voice = (v: Omit<VoiceSpec, "fixed" | "pitched"> & Partial<Pick<VoiceSpec,
   fixed: [], pitched: false, ...v,
 });
 
-// --- drum voices: the six Pulse.8 machines, unchanged controls --------------------------------------
+// --- drum voices: the six Hybrid.8 machines, unchanged controls --------------------------------------
 
 export const DRUM_VOICES: Readonly<Record<string, VoiceSpec>> = {
   kick: voice({

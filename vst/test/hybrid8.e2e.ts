@@ -1,4 +1,4 @@
-// Pulse.8 as the plugin plays it, end to end and headless: the page's own code (Groovebox, controller, MIDI) over webvst's shim, the
+// Hybrid.8 as the plugin plays it, end to end and headless: the page's own code (Groovebox, controller, MIDI) over webvst's shim, the
 // real plugin engine behind it, a DAW simulated in real time. Run with `npm run vst:e2e` (builds the harness first).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { harnessBinary, onsets, rmsBetween, SR, startRig, type Rig } from "./rig";
@@ -8,7 +8,7 @@ const TOL = 200; // frames (4 ms): a block is 128, the detector's window 64
 const BEAT = (SR * 60) / 120; // frames in a beat at 120 bpm
 
 const available = harnessBinary() !== null;
-describe.skipIf(!available)("Pulse.8 in the plugin (headless end to end)", () => {
+describe.skipIf(!available)("Hybrid.8 in the plugin (headless end to end)", () => {
   let rig: Rig;
   // the page, imported once the shim is installed
   let controller: typeof import("../../src/engine/controller").controller;

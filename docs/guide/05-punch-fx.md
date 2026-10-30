@@ -1,6 +1,6 @@
 # Punch FX
 
-Punch FX are the performance heart of Pulse.8. Nine effects live on one shared effect section. You hold a pad, the
+Punch FX are the performance heart of Hybrid.8. Nine effects live on one shared effect section. You hold a pad, the
 effect **sweeps in** while you hold it, and you let go to bring it back out. Arm **WRITE** and the move is recorded
 into the pattern, including how far the sweep had gone at every step.
 

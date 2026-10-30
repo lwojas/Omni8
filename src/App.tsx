@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { controller } from "./engine/controller";
+import { PRODUCT } from "./product";
 import { NUM_TRACKS } from "./engine/spec";
 import { getState, setState, useStore } from "./engine/store";
 import type { Tab } from "./engine/state";
@@ -26,7 +27,7 @@ function StartGate() {
   return (
     <div className="gate">
       <div className="gate-card">
-        <div className="logo big">PULSE<span>.8</span></div>
+        <div className="logo big">{PRODUCT.logo[0]}<span>{PRODUCT.logo[1]}</span></div>
         <p className="silk">TWO SOUNDS PER TRACK · SAMPLES · FX MANGLER</p>
         <button type="button" className="btn play gate-btn" onClick={start} disabled={audio === "starting"} autoFocus>
           {audio === "starting" ? "STARTING…" : "▶ TAP TO START"}

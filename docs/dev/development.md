@@ -23,7 +23,7 @@ Node 22 is what CI uses.
 | `npm run build` | `tsc --noEmit` then `vite build` to `dist/` |
 | `npm run preview` | Serve `dist/` |
 | `npm test` | Vitest, once |
-| `npm run vst:build` | Build the optional `Pulse8.vst3` (see [VST3 build](vst.md)) |
+| `npm run vst:build` | Build the optional `Hybrid8.vst3` (see [VST3 build](vst.md)) |
 | `npm run vst:serve` | Production build served on port 5175, for a plugin pointed at local code |
 | `npm run vst:e2e` | Headless end-to-end test of the plugin's host path, no DAW |
 
@@ -100,4 +100,4 @@ A failing test or type error stops the deploy. The `--base` is the repository na
 - [Architecture](architecture.md) · [Audio graph](audio-graph.md) · [Timing](timing.md) · [State](state-and-persistence.md)
   · [Extending](extending.md) · [MIDI](midi.md)
 - `concept/DESIGN/` — the visual design tokens and reference mock-up.
-- webdsp's own `ARCHITECTURE.md` and `docs/` — the engine Pulse.8 is built on.
+- webdsp's own `ARCHITECTURE.md` and `docs/` — the engine Hybrid.8 is built on.

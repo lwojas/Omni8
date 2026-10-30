@@ -1,4 +1,4 @@
-// Wires the generic MIDI pieces to Pulse.8: the parameter registry, the mapping, the transport.
+// Wires the generic MIDI pieces to Hybrid.8: the parameter registry, the mapping, the transport.
 // This is the only MIDI module that imports the app.
 import { hasEmbeddedHost, sameMidiRoute, type MidiRoute } from "webdsp";
 import { storageKey } from "../product";

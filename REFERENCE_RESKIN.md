@@ -1,5 +1,8 @@
 # Reference groovebox: reskin and clone guide
 
+> Hybrid.8 was started from this guide and has since diverged (two slots per track, an engine catalogue instead of a `TRACKS` lineup). The text
+> below describes the reference, Pulse.8, and is kept as the map of what to reuse. For Hybrid.8 itself see `docs/dev/hybrid8-plan.md`.
+
 For developers and coding agents starting a **new groovebox product** from this repository.
 
 ## Purpose

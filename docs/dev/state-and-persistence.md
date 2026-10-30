@@ -1,5 +1,11 @@
 # State & persistence
 
+> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
+> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
+> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
+> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
+> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
+
 ## The model
 
 ```
@@ -86,7 +92,7 @@ Inside the VST3 build the autosave slot is replaced by the DAW session (`restore
 
 ### Export and import
 
-A JSON file `{ app, version: 1, name, project }` named `<name>.pulse8.json`. Untouched patterns serialise as `null`
+A JSON file `{ app, version: 1, name, project }` named `<name>.hybrid8.json`. Untouched patterns serialise as `null`
 (`sparse`) because 64 full patterns are large; import fills them with fresh ones.
 
 ### Validation and migration
@@ -113,5 +119,5 @@ warning, and export remains the way out.
 
 ### Other storage
 
-`localStorage` holds two per-browser conveniences: `pulse8.keyHighlight` and `pulse8.midi` (enabled, ports, follow
+`localStorage` holds two per-browser conveniences: `hybrid8.keyHighlight` and `hybrid8.midi` (enabled, ports, follow
 clock). Every access is wrapped in try/catch.

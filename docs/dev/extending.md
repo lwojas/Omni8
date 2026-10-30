@@ -1,4 +1,10 @@
-# Extending Pulse.8
+# Extending Hybrid.8
+
+> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
+> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
+> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
+> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
+> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
 
 Recipes for the changes people actually make. Each lists every file you touch and the tests that will tell you if you
 missed one. Run `npm test` and `npm run build` (which type-checks) after each.

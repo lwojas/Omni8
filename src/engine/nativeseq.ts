@@ -1,5 +1,5 @@
 // The song as a webdsp Sequence, for a plugin host that plays it itself (runtime.setSequence; webdsp docs/native-sequence.md).
-// The host repeats one cycle against the DAW's transport on its audio thread, so Pulse.8 keeps playing with the plugin window
+// The host repeats one cycle against the DAW's transport on its audio thread, so Hybrid.8 keeps playing with the plugin window
 // closed, follows locates, loops and tempo, and renders in an offline bounce. The page stays the editor: any change sends the
 // whole sequence again, and the host swaps it in at a block boundary.
 //
@@ -8,7 +8,7 @@
 // pure functions the live engine applies (audio.ts). What differs is only where tempo comes from: the DAW's, per block.
 //
 // Time. Beats are quarter notes (the host's PPQ); a 16th step is a quarter of a beat. A `Layout` says what plays: a list of patterns
-// (the chain, or the one pattern looping) and an `origin`, the absolute beat at which the layout's first pattern starts. Pulse.8's song
+// (the chain, or the one pattern looping) and an `origin`, the absolute beat at which the layout's first pattern starts. Hybrid.8's song
 // position at DAW beat P is `(P - origin) mod cycle`, so a DAW that starts at bar 1 plays the song from its start and a locate lands
 // where the song is, as a MIDI Song Position Pointer does. A cued pattern change is a new layout whose origin puts the cued pattern's
 // first step on the next pattern boundary; the host swaps sequences at an arbitrary block, so the swap itself goes through

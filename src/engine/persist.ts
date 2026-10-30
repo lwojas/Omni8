@@ -163,7 +163,7 @@ export async function loadProject(): Promise<void> {
 
 const FILE_APP = PRODUCT.id;
 
-/** "mix.pulse8.json" and "mix.json" both import as "mix". */
+/** "mix.hybrid8.json" and "mix.json" both import as "mix". */
 const stripFileExt = (file: string) => (file.toLowerCase().endsWith(FILE_EXT) ? file.slice(0, -FILE_EXT.length) : file.replace(/\.json$/i, ""));
 
 export interface SavedProject {

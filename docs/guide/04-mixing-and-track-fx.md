@@ -40,8 +40,8 @@ A send plus a **SIZE**. Larger sizes lengthen the decay and open the damping, so
 
 ### Defaults
 
-New patterns start with sends set for a working mix: every track except the kick has some delay, and the snare, clap,
-percussion and FM have some reverb. Double-tap a send knob to return it to its default.
+New patterns start with sends set for a working mix: every track except the first has some delay, and the snare track, the
+sample track, the second acid and the FM and pad have some reverb. Double-tap a send knob to return it to its default.
 
 ## Track FX versus Punch FX
 

@@ -1,42 +1,50 @@
 # Getting started
 
-Pulse.8 runs in the browser. Open it, tap **START**, and a groove is already playing. Everything below is a way of
+Hybrid.8 runs in the browser. Open it, tap **START**, and a groove is already playing. Everything below is a way of
 changing that groove into yours.
 
 ## The machine
 
-Eight tracks, one sound engine each, one shared effects section.
+Eight tracks. **Every track has two slots, A and B, and each slot holds a sound engine (or nothing).** Both slots play at once, so a
+track can be a kick under a sample, two samples layered, an acid bass with a sample under it, or an FM and a pad together. One
+shared effects section.
 
-| # | Track | Engine | Role |
+The engines are **ACID**, **FM**, **PAD**, **DRUM** (kick, snare, clap, closed hat, open hat, tom), **PERC** (a percussion synth)
+and **SAMPLE**. The tracks start like this:
+
+| # | Track | Slot A | Slot B |
 |---|---|---|---|
-| 1 | **KICK** | Sweep kick | drum |
-| 2 | **SNARE** | Two-mode snare (tone + noise) | drum |
-| 3 | **CL HAT** | Metallic hat, closed | drum |
-| 4 | **OP HAT** | Metallic hat, open | drum |
-| 5 | **CLAP** | Burst clap | drum |
-| 6 | **PERC** | Tuned tom | drum |
-| 7 | **ACID** | Acid bass: saw/square, resonant filter, accent, slide | melodic |
-| 8 | **FM** | Two-operator FM | melodic |
+| 1 | **KICK+SMPL** | Kick | Sample (sub thump) |
+| 2 | **SNARE+CLAP** | Snare | Clap |
+| 3 | **CH** | Closed hat | empty |
+| 4 | **OH** | Open hat | empty |
+| 5 | **SMPL+SMPL** | Sample (rim) | Sample (shaker) |
+| 6 | **ACID** | Acid bass | empty |
+| 7 | **ACID+SMPL** | Acid bass | Sample (snap) |
+| 8 | **FM+PAD** | FM | Pad |
+
+Change any of it from **SOUND**: pick the slot tab (**A** or **B**), then an engine. A track with a pitched engine (ACID, FM,
+PAD) gets the keyboard and arpeggiator; any other track gets drum pads. A sample on a melodic track follows its notes.
 
 The two hats choke each other: an open hat is cut by the next closed hat, as it would be on a real kit.
 
 ## The screen
 
-Pulse.8 adapts to the device. The pieces are the same everywhere; only their arrangement changes.
+Hybrid.8 adapts to the device. The pieces are the same everywhere; only their arrangement changes.
 
 **Phone** — five tabs along the bottom:
 
 | Tab | What is on it |
 |---|---|
 | **SEQ** | Track strip, step pads, keyboard, written-FX lane, punch pads |
-| **SOUND** | Kit/preset chips, the track's knobs, its delay and reverb sends |
+| **SOUND** | Slot tabs and engine chips, the slot's knobs, the INSERT FX, the track's delay and reverb sends |
 | **MIX** | Level, mute and solo for all eight tracks |
 | **FX** | Track FX (delay and reverb per track) and the Punch FX panel |
 | **PTN** | Pattern slots, copy, clear, chain |
 
 **Wide screens (1100 px and up)** — everything is on one page. Transport and pattern navigation run across the top.
 Below them a band holds the instrument knobs, the track FX and the Punch FX. The sequencer takes the rest of the
-width, with a slim mixer beside it. Drums get a block of large pads; the bass and FM tracks get a two-octave keyboard.
+width, with a slim mixer beside it. Tracks with only drums and samples get a block of large pads; tracks with a pitched engine get a two-octave keyboard.
 In a short window (820 px high or less, such as a DAW's default plugin window) the band is compacted: the delay and reverb
 sends move to a strip under the knobs, so the keyboard stays on screen.
 
@@ -69,11 +77,11 @@ sends move to a strip under the knobs, so the keyboard stays on screen.
 
 1. **Tap START.** The demo groove plays.
 2. **Mute and solo.** Press **M** on the kick, then bring it back. Press **S** on the bass to hear it alone.
-3. **Change the drums.** Select a drum track, open **SOUND** (or look at the band on a wide screen) and pick another
-   **KIT**. All six drums change at once.
-4. **Move a knob.** Select **ACID**, turn **FILTER** and **RES** while it plays. Choose a **PRESET** such as `SQUELCH`.
+3. **Change a sound.** Select a track, open **SOUND** (or look at the band on a wide screen), tap slot **B** and pick another
+   engine. Choose **SAMPLE** and tap the sample name to pick from the shared library.
+4. **Move a knob.** Select **ACID**, turn **FILTER** and **RES** while it plays.
 5. **Punch something in.** Hold **FILTER** or **SWEEP** in the punch pads. Let go. Now arm **WRITE**, hold a pad
    during the loop, and the move is recorded and replays every time round.
-6. **Save.** Name it with **SAVE**. Pulse.8 also autosaves, so a reload picks up where you stopped.
+6. **Save.** Name it with **SAVE**. Hybrid.8 also autosaves, so a reload picks up where you stopped.
 
 Next: [Sequencing](02-sequencing.md).

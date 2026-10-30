@@ -48,7 +48,9 @@ Notes sustain for 62% of a step by default. Select a melodic step and use the **
 | Track | Range | Default new note |
 |---|---|---|
 | ACID | C1 – B3 | C1 |
-| FM | C2 – B4 | C3 |
+| FM, PAD | C2 – B4 | C3 |
+
+A track with both takes the range of its first pitched slot.
 
 ### Key and scale
 
@@ -63,7 +65,7 @@ damaging anything. Leave it on *Chromatic* for every note.
 
 ## Arpeggiator
 
-The ACID and FM tracks each have an arpeggiator. Hold one or more keys and it plays them as a sequence, locked to the
+Every track with a pitched engine (ACID, FM, PAD) has an arpeggiator. Hold one or more keys and it plays them as a sequence, locked to the
 project tempo and the sequencer's clock. It runs whether or not the transport is playing.
 
 | Setting | Options |

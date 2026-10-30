@@ -1,6 +1,6 @@
 # Timing & scheduling
 
-Pulse.8 uses a conventional **lookahead scheduler**: a steady timer wakes every 10 ms, and everything due in the next
+Hybrid.8 uses a conventional **lookahead scheduler**: a steady timer wakes every 10 ms, and everything due in the next
 120 ms is handed to the audio engine with an exact start time. The audio thread plays it on the sample.
 
 ## The clock

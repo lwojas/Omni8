@@ -1,6 +1,12 @@
 # Architecture
 
-Pulse.8 is a TypeScript application: React for the interface, a plain-TypeScript engine for everything that matters
+> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
+> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
+> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
+> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
+> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
+
+Hybrid.8 is a TypeScript application: React for the interface, a plain-TypeScript engine for everything that matters
 musically, and [webdsp](https://github.com/lwojas/webdsp) for sound. The one rule that shapes everything else:
 
 > **The engine does not know the UI exists. The UI does not know the audio exists.** Both talk to a single immutable
@@ -75,7 +81,7 @@ musically, and [webdsp](https://github.com/lwojas/webdsp) for sound. The one rul
 | File | Responsibility |
 |---|---|
 | `mapping.ts` | **The map.** CC → parameter id. Data only. |
-| `control.ts` | Generic MIDI control engine: mapping + a `ParamBus` in, messages out and back. Knows nothing about Pulse.8. |
+| `control.ts` | Generic MIDI control engine: mapping + a `ParamBus` in, messages out and back. Knows nothing about Hybrid.8. |
 | `clock.ts` | Pure MIDI clock / Start / Stop / Continue / SPP follower. |
 | `ports.ts` | Web MIDI port management. |
 | `setup.ts` | The only MIDI file that imports the app: connects the above to the parameters and the transport. |

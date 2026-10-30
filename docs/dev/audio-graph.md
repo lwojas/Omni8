@@ -1,7 +1,13 @@
 # Audio graph
 
+> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
+> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
+> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
+> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
+> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
+
 `engine/audio.ts` builds the whole signal path from webdsp primitives: instruments, buses, bus sends and effects. There
-are no custom DSP nodes in Pulse.8.
+are no custom DSP nodes in Hybrid.8.
 
 ## Topology
 

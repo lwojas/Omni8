@@ -3,7 +3,7 @@
 Status: Stages 1 to 5 implemented; Stage 6 partly done. 194 tests and the production build pass; phone (360 px) and desktop
 were driven in a real browser (slot tabs, engine swap during playback, sample modal) with no console errors and no horizontal scroll.
 
-Decisions taken: per-trigger envelope added to webdsp (branch `per-trigger-envelope` in the sibling repo, not merged or pushed);
+Decisions taken: per-trigger envelope added to webdsp (merged to webdsp `main`; this repo depends on it from GitHub);
 factory samples are generated in code; native `Sequence` sample events still lack start/end/decay (web build is the target).
 
 Not done yet: audible check by ear, the plugin build (`vst/`, CMake names, deploy workflow) and the `docs/guide` pages still say Pulse.8.

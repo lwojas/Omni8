@@ -2,7 +2,7 @@
 
 ## Patterns
 
-Pulse.8 has **64 patterns**. A pattern is everything about a passage of music:
+Hybrid.8 has **64 patterns**. A pattern is everything about a passage of music:
 
 - the steps of all eight tracks, 16 – 64 steps long
 - every track's sound, level, delay and reverb
@@ -43,7 +43,7 @@ The chain, and whether it is on, is saved with the project.
 
 1. **Pattern 1:** the main groove.
 2. **COPY** it to pattern 2. Strip the kick and let the FM line carry it: a breakdown.
-3. **COPY** the main groove to pattern 3. Load the **TECHNO HARD** kit and write a **ROLL** into the last bar of the
+3. **COPY** the main groove to pattern 3. Turn the drum decays down and write a **ROLL** into the last bar of the
    lane: a build.
 4. Chain them: `1 1 1 1 2 2 3 1 1 1 1`.
 
