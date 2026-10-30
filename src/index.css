@@ -145,7 +145,7 @@ button.oled { cursor: pointer; text-align: left; }
 
 /* two-slot tracks: the slot tabs share the sound panel's title row; the engine chips are the old preset row */
 .sound .panel-title h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.slot-tabs { margin-left: auto; flex: none; }
+.slot-tabs { margin-left: 6px; flex: none; }
 .slot-tabs .chip { min-height: 30px; padding: 0 9px; font-size: 10px; display: inline-flex; align-items: center; gap: 5px; }
 .slot-tabs .slot-name { font-weight: 400; opacity: 0.7; }
 .slot-tabs .chip[data-active="true"] .slot-name { opacity: 1; }
@@ -271,19 +271,21 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
 /* ---- mixer ------------------------------------------------------------------------------------ */
 
 .mixer { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.mix-row { flex: 1 1 0; min-height: 30px; max-height: 46px; display: grid; grid-template-columns: 50px 1fr 34px; gap: 6px; align-items: stretch; padding: 2px 0; border-bottom: 1px solid var(--rule-2); }
+.mix-row { flex: 1 1 0; min-height: 30px; max-height: 46px; display: grid; grid-template-columns: 76px 1fr 34px; gap: 6px; align-items: stretch; padding: 2px 0; border-bottom: 1px solid var(--rule-2); }
 .mix-row[data-dim="true"] { opacity: 0.55; }
 .mix-row .btn.sm { min-height: 0; min-width: 0; padding: 0; }
 .mix-ms { display: flex; flex-direction: column; gap: 3px; }
 .mix-ms .btn.sm { flex: 1 1 0; width: 100%; }
-.mix-name { text-align: left; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--acc); }
+.mix-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--acc); }
 .slider { position: relative; border-radius: var(--radius); background: var(--cap); border: 1px solid var(--rule); overflow: hidden; touch-action: none; cursor: ew-resize; --k: var(--acc); }
 .slider-fill { position: absolute; inset: 0; background: color-mix(in srgb, var(--k) 85%, #000); transform-origin: 0 50%; will-change: transform; }
 .slider-label, .slider-value { position: absolute; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--text); text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; }
 .slider-label { left: 8px; }
 .slider-value { right: 8px; }
+.mix-row .slider-label { display: none; }
+.mix-row .slider-value { left: 8px; right: auto; }
 .slider[data-locked] { border-color: var(--fx); }
-.dist-bar, .filter-bar { margin-top: 10px; }
+.dist-bar, .filter-bar { margin-top: 24px; }
 .filter-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 6px; }
 .filter-bar .slider { height: 32px; }
 .dist-bar .slider { height: 32px; }
@@ -388,7 +390,6 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   :root { --gap: 8px; }
   .app[data-tab="fx"] .layout { overflow: visible; }
   .tabs, .punchbar, .phone-only { display: none; }
-  .topbar { padding-left: 4px; padding-right: 4px; }
   .transport { padding: 8px 12px; gap: 8px; }
   .logo { margin-right: 20px; font-size: 20px; }
   .swing { margin-left: 4px; }
@@ -454,24 +455,22 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   /* band: instrument controls (secondary) and FX mangler (supporting), each a horizontal strip */
   .band > .panel, .app[data-tab] .band > .panel { padding: 10px 12px; }
   .band .panel-title { margin-bottom: 6px; }
-  .sound { display: grid; grid-template-columns: 150px minmax(0, 1fr) 118px; grid-template-rows: auto 1fr; grid-template-areas: "title knobs sends" "chips knobs sends"; column-gap: 16px; min-height: 0; }
-  .sound .panel-title { grid-area: title; flex-wrap: wrap; row-gap: 4px; }
+  .sound { display: grid; grid-template-columns: 150px minmax(0, 1fr) 118px; grid-template-rows: auto 1fr; grid-template-areas: "title title sends" "chips knobs sends"; column-gap: 16px; min-height: 0; }
+  .sound .panel-title { grid-area: title; }
   .sound .panel-title > .silk { display: none; }
-  .sound .panel-title h2 { flex: 1 1 0; }
-  .slot-tabs { margin-left: 0; width: 100%; }
-  .slot-tabs .chip { flex: 1 1 0; justify-content: center; min-height: 26px; padding: 0 4px; }
+  .slot-tabs .chip { justify-content: center; min-height: 26px; padding: 0 8px; }
   .sound .chips { grid-area: chips; align-content: start; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
   .sound .chips .silk { grid-column: 1 / -1; }
   .sound .chip { min-height: 28px; padding: 2px 4px; font-size: 10px; min-width: 0; white-space: normal; line-height: 1.1; overflow-wrap: anywhere; }
   .sound-main { grid-area: knobs; align-self: center; min-width: 0; }
   .sound .knobs { --ks: var(--ks-lg); margin: 0; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); }
-  .dist-bar, .filter-bar { margin-top: 6px; }
+  .dist-bar, .filter-bar { margin-top: 16px; }
   .filter-bar { gap: 5px; }
   .filter-bar .slider { height: 24px; }
   .filter-bar .slider-label, .filter-bar .slider-value { font-size: 9px; letter-spacing: 0.04em; }
   .filter-bar .slider-label { left: 5px; }
   .filter-bar .slider-value { right: 5px; }
-  .dist-bar { margin-top: 6px; }
+  .dist-bar { margin-top: 16px; }
   .dist-bar .slider { height: 24px; }
   .dist-bar .slider-label, .dist-bar .slider-value { font-size: 9px; letter-spacing: 0.04em; }
   .dist-bar .slider-label { left: 5px; }
@@ -505,10 +504,9 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   /* mixer column */
   .mix-panel, .app[data-tab] .mix-panel { flex: 1 1 auto; min-height: 0; overflow: hidden; }
   .mix-panel .panel-title .silk { display: none; }
-  .mix-row { max-height: 64px; grid-template-columns: 38px minmax(0, 1fr) 28px; gap: 4px; }
-  .mix-row .slider-value { right: 5px; font-size: 9px; letter-spacing: 0.04em; }
-  .mix-row .slider-label { left: 5px; font-size: 9px; letter-spacing: 0.04em; }
-  .mix-name { font-size: 9px; }
+  .mix-row { max-height: 64px; grid-template-columns: 76px minmax(0, 1fr) 30px; gap: 6px; }
+  .mix-row .slider-value { left: 6px; font-size: 11px; }
+  .mix-name { font-size: 10px; }
   .app .ptn-panel, .app[data-tab] .ptn-panel { display: none; }
 }
 
@@ -535,6 +533,7 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   .sound .sends-knobs { grid-template-columns: 46px; --ks: 30px; gap: 2px; }
   .sends { padding: 4px 6px; }
   .mix-row .btn.sm { min-width: 0; }
+  .mix-row { grid-template-columns: 64px minmax(0, 1fr) 28px; }
 }
 
 @media (min-width: 1100px) and (max-width: 1499px) {
@@ -574,7 +573,7 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
   .tfx-groups { gap: 4px; }
   .tfx-group { padding: 2px 6px 4px; }
   /* sound: sends move from a tall right-hand column to a strip under the knobs */
-  .sound { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: "title knobs" "chips knobs" "plock sends"; column-gap: 12px; }
+  .sound { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: "title title" "chips knobs" "plock sends"; column-gap: 12px; }
   .sound .plock-bar { grid-area: plock; margin-top: 4px; }
   .sound .knobs { --ks: 44px; }
   .sound .chip { min-height: 24px; }
@@ -604,7 +603,7 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
 .project-title { font: 700 12px var(--font-mono); letter-spacing: 0.04em; overflow-wrap: anywhere; }
 .project-title[data-empty="true"] { color: var(--silk); }
 .menu-row .btn svg { vertical-align: -3px; margin-right: 4px; }
-@media (max-width: 699px) { .logo { display: none; } }
+@media (max-width: 699px) { .logo { display: none; } .project-menu { margin-left: auto; } .project-menu .btn.sm { min-height: 40px; min-width: 40px; } }
 @media (max-width: 699px) { .topbar .swing, .project-menu .head-only { display: none; } .menu-group.phone-group { display: flex; } }
 @media (min-width: 700px) { .project-menu .lbl { display: inline; } }
 
