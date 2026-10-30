@@ -186,6 +186,8 @@ select.chip.variant { appearance: none; -webkit-appearance: none; background: va
 .rail-item[data-dim="true"] .rail-main { opacity: 0.45; }
 .rail-no, .rail-name small, .rail-name .long, .rail-ms { display: none; }
 .rail-name b { font-weight: 700; }
+/* phones: the track number is the label; the accent colour says which part it is */
+@media (max-width: 699px) { .rail-name { display: none; } .rail-no { display: inline; font-size: 14px; } }
 
 .pads { flex: 1 1 auto; max-height: calc(var(--pad-h) * 3.4); display: grid; grid-template-columns: repeat(8, 1fr); grid-auto-rows: minmax(var(--pad-h), 1fr); gap: 5px; }
 .pad { position: relative; overflow: hidden; min-height: var(--pad-h); display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 3px 2px 4px; border-radius: var(--radius); background: var(--cap); border: 1px solid var(--rule); font-family: var(--font-mono); touch-action: manipulation; }
