@@ -6,10 +6,10 @@ import { newDelay, newReverb } from "../src/engine/trackfx";
 
 describe("product identity", () => {
   it("keeps the identifiers saved on users' machines stable", () => {
-    expect(PRODUCT.id).toBe("pulse8");
-    expect(storageKey("midi")).toBe("pulse8.midi");
-    expect(storageKey("keyHighlight")).toBe("pulse8.keyHighlight");
-    expect(FILE_EXT).toBe(".pulse8.json");
+    expect(PRODUCT.id).toBe("hybrid8");
+    expect(storageKey("midi")).toBe("hybrid8.midi");
+    expect(storageKey("keyHighlight")).toBe("hybrid8.keyHighlight");
+    expect(FILE_EXT).toBe(".hybrid8.json");
   });
 });
 

@@ -3,12 +3,12 @@
 // files, so changing `id` after shipping orphans existing saves, autosaves and MIDI settings.
 export const PRODUCT = {
   /** Display name (menus, messages, the page title in index.html). */
-  name: "Pulse.8",
+  name: "Hybrid.8",
   /** Header logo: the two halves are styled separately (see `.logo` in index.css). */
-  logo: ["PULSE", ".8"] as const,
+  logo: ["HYBRID", ".8"] as const,
   /** Stable machine id: IndexedDB name, localStorage prefix, project-file stamp, and the VST's app id.
    * Must equal WEBVST_APP_ID in vst/CMakeLists.txt, or a plugin host rejects the state. */
-  id: "pulse8",
+  id: "hybrid8",
 };
 
 /** Prefix for localStorage keys, e.g. `storageKey("midi")` → "pulse8.midi". */

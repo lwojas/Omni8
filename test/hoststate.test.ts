@@ -71,7 +71,7 @@ describe("host snapshot", () => {
 
   it("round-trips the project, stamped with the app", () => {
     const snap = savedSnapshot();
-    expect(snap.app).toBe("pulse8");
+    expect(snap.app).toBe("hybrid8");
     const project = fromHostSnapshot(snap)!;
     expect(project.bpm).toBe(97.5);
     expect(project.projectName).toBe("From the DAW");

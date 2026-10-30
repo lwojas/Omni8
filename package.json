@@ -1,7 +1,7 @@
 {
-  "name": "pulse8",
+  "name": "hybrid8",
   "version": "0.1.0",
-  "description": "Pulse.8, a small groovebox built on the webdsp engine",
+  "description": "Hybrid.8, a two-slot-per-track groovebox built on the webdsp engine",
   "private": true,
   "type": "module",
   "scripts": {
