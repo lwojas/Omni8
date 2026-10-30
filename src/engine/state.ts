@@ -1,0 +1,374 @@
+// The whole application state, and the pure functions that edit a pattern.
+// Nothing here touches audio or React.
+import { storageKey } from "../product";
+import { defaultSound, hasDistortion, NUM_TRACKS, TRACKS, BASS_TRACK, TONE_TRACK } from "./spec";
+import { defaultArp, type ArpSettings } from "./arp";
+import { defaultMangler } from "./mangler";
+import { defaultScale, isChromatic, notesInRange, rootAtOrAbove, type ProjectScale } from "./scale";
+import { newDelay, newDist, newReverb, type DelaySend, type ReverbSend } from "./trackfx";
+
+export const MAX_STEPS = 64;
+export const PAGE = 16;
+export const NUM_PATTERNS = 64;
+/** The desktop pattern bar shows one bank of this many patterns at a time. */
+export const BANK_SIZE = 16;
+export const MAX_CHAIN = 64;
+export const LENGTHS = [16, 32, 48, 64] as const;
+
+export interface Step {
+  on: boolean;
+  /** MIDI note (melodic tracks only). */
+  note: number;
+  /** Accent: harder hit; on the bass it also opens the filter via velocity-driven bite. */
+  acc: boolean;
+  /** Slide: glide into this note from the previous one (melodic tracks only). */
+  slide: boolean;
+  /** Gate length: index into `GATES` (melodic tracks only). Absent in saves from before it existed. */
+  gate?: number;
+  /** Parameter locks: per-step overrides of the track's base sound, by parameter id (see plock.ts) to a normalised 0..1 value.
+   * Holds only deviations; absent (the usual case, and in saves from before locks) means the step plays the base sound. */
+  parameterLocks?: Record<string, number>;
+}
+
+/** Selectable note lengths in steps. Saved steps store an index, so new entries are only ever appended.
+ * Index 0 is the short default (no button: it is what a step has until a length is picked). */
+export const GATES = [
+  { label: "DEF", name: "Default", len: 0.62 },
+  { label: "1/4", name: "Quarter bar", len: 4 },
+  { label: "BAR", name: "One bar", len: 16 },
+  { label: "1", name: "1 step", len: 1 },
+  { label: "2", name: "2 steps", len: 2 },
+  { label: "3", name: "3 steps", len: 3 },
+  { label: "1/2", name: "Half bar", len: 8 },
+] as const;
+/** Gate indexes of the buttons, in display order. */
+export const GATE_BUTTONS = [3, 4, 5, 1, 6, 2] as const;
+export const DEFAULT_GATE = 0;
+
+export interface TrackPattern {
+  steps: Step[];
+  /** Normalised 0..1 per control of the track's spec. */
+  sound: number[];
+  level: number;
+  /** Track sends (mixing): delay and reverb. */
+  dly: DelaySend;
+  rev: ReverbSend;
+  /** Synths only (ACID, FM): the distortion insert's amount, 0..1 (0 = off; lockable). Absent on every other track. */
+  dist?: number;
+  /** Punch FX send gate: false keeps the track out of the punch section (neither fed nor taken over). */
+  punch: boolean;
+  /** Octave shift for melodic tracks. */
+  oct: number;
+  /** Name of the preset last loaded into this track (cosmetic). */
+  preset: string;
+  /** Last step (1-based, absolute across the bars): the track plays steps 1..last and wraps. Absent (older saves, and whenever the
+   * pattern length is set) means the whole pattern. Steps past it keep their data, they just do not play. See `trackLast`. */
+  last?: number;
+}
+
+/** The track's effective last step, 1..`pat.length`: its own `last`, or the whole pattern when it has none. */
+export const trackLast = (pat: Pattern, track: number): number => {
+  const last = pat.tracks[track].last;
+  return typeof last === "number" && last >= 1 ? Math.min(Math.floor(last), pat.length) : pat.length;
+};
+
+/**
+ * The step of `track` that plays while the pattern is at `step`, `run` steps into the current run of this pattern. A run starts when the
+ * pattern does and carries on through its repeats (a chain moving on, or a cue, starts a new one). A track shorter than the pattern wraps at
+ * its own last step and keeps counting through the repeats, so tracks of different lengths drift against each other (polymeter); a track as
+ * long as the pattern just plays `step`.
+ */
+export const trackStepAt = (pat: Pattern, track: number, step: number, run: number): number => {
+  const last = trackLast(pat, track);
+  return last >= pat.length ? step : ((run % last) + last) % last;
+};
+
+export interface ManglerBase {
+  /** Index into `SWEEPS`: how long a held punch takes to reach full effect. */
+  sweep: number;
+  /** Character parameter per punch id (index 0 unused), normalised 0..1. */
+  param: number[];
+}
+
+export interface Pattern {
+  length: number;
+  tracks: TrackPattern[];
+  /** Written FX: up to `FX_LANES` recorded punch-ins that play back layered. */
+  fxLanes: FxLane[];
+  mangler: ManglerBase;
+}
+
+/** One recorded punch-in take. */
+export interface FxLane {
+  /** Punch id per step (0 = none). */
+  fx: number[];
+  /** Sweep level 0..1 of the written punch at the start of each step (the recorded automation). */
+  fxLvl: number[];
+}
+
+/** How many punch-ins one pattern can hold at once. */
+export const FX_LANES = 3;
+
+export const newFxLane = (): FxLane => ({ fx: new Array(MAX_STEPS).fill(0), fxLvl: new Array(MAX_STEPS).fill(0) });
+export const fxLaneEmpty = (l: FxLane): boolean => l.fx.every((id) => id === 0);
+
+/** The lane a new punch-in should be written to: the first empty one. When all are taken they are
+ * all wiped and the first is used again. Mutates `p`. */
+export function pickWriteLane(p: Pattern): number {
+  const free = p.fxLanes.findIndex(fxLaneEmpty);
+  if (free >= 0) return free;
+  p.fxLanes = Array.from({ length: FX_LANES }, newFxLane);
+  return 0;
+}
+
+/** Sequencer panel: the step pads, or one FX lane (its index). */
+export type SeqView = "steps" | number;
+
+export type Tab = "seq" | "sound" | "mix" | "fx" | "ptn";
+
+export interface AppState {
+  // persisted
+  /** Name of the loaded or last-saved project; empty for an unsaved one. */
+  projectName: string;
+  patterns: Pattern[];
+  chain: number[];
+  chainOn: boolean;
+  bpm: number;
+  swing: number;
+  pattern: number;
+  /** The project key: shapes the synth keyboards. */
+  scale: ProjectScale;
+  /** Arpeggiator settings per track (only the melodic tracks use theirs). */
+  arp: ArpSettings[];
+  // performance state
+  mutes: boolean[];
+  solos: boolean[];
+  focus: number;
+  page: number;
+  selStep: number;
+  follow: boolean;
+  /** Light piano keys as they are played (manually or by the sequencer). */
+  keyHighlight: boolean;
+  /** Browser storage is unavailable or refusing writes: nothing is being saved. */
+  storageBlocked: boolean;
+  tab: Tab;
+  seqView: SeqView;
+  // transport
+  audio: "off" | "starting" | "ready" | "error";
+  audioError: string;
+  playing: boolean;
+  /** The DAW's tempo while a plugin host plays the song (the project's own tempo is not used then); null otherwise. */
+  hostBpm: number | null;
+  playPattern: number;
+  chainPos: number;
+  cue: number | null;
+  // FX performance
+  fxPlay: boolean;
+  write: boolean;
+  erase: boolean;
+  /** Realtime note recording is armed: while playing, keys (on screen or MIDI) write onto the steps. Not saved. */
+  rec: boolean;
+  /** Punch id currently held by the player (0 = none). */
+  punch: number;
+  /** Punch whose character parameter is shown (the last one pressed). */
+  punchSel: number;
+  // pattern bank tools
+  chainEdit: boolean;
+  copyArm: boolean;
+  /** P-LOCK mode: taps select steps (empty ones too) instead of editing them, and sound controls write the selected step's locks. */
+  plock: boolean;
+}
+
+export const emptyStep = (note: number): Step => ({ on: false, note, acc: false, slide: false });
+
+export function newTrackPattern(track: number): TrackPattern {
+  const spec = TRACKS[track];
+  return {
+    steps: Array.from({ length: MAX_STEPS }, () => emptyStep(spec.defaultNote ?? 0)),
+    sound: defaultSound(spec),
+    level: defaultLevel(track),
+    dly: newDelay(track),
+    rev: newReverb(track),
+    ...(hasDistortion(track) ? { dist: newDist() } : {}),
+    punch: true,
+    oct: 0,
+    preset: "",
+  };
+}
+
+// Starting fader level per track: `TRACKS[i].mix.level` (spec.ts).
+export const defaultLevel = (track: number) => TRACKS[track].mix.level;
+
+export function newPattern(): Pattern {
+  return {
+    length: 16,
+    tracks: Array.from({ length: NUM_TRACKS }, (_, i) => newTrackPattern(i)),
+    fxLanes: Array.from({ length: FX_LANES }, newFxLane),
+    mangler: defaultMangler(),
+  };
+}
+
+export const clonePattern = (p: Pattern): Pattern => structuredClone(p);
+
+// --- a groove to start from ------------------------------------------------------------------
+
+const hits = (p: Pattern, track: number, steps: number[], acc: number[] = []) => {
+  for (const s of steps) p.tracks[track].steps[s].on = true;
+  for (const s of acc) p.tracks[track].steps[s].acc = true;
+};
+
+const line = (p: Pattern, track: number, notes: Array<[step: number, note: number, flags?: string]>) => {
+  for (const [s, note, flags = ""] of notes) {
+    const st = p.tracks[track].steps[s];
+    st.on = true;
+    st.note = note;
+    st.acc = flags.includes("a");
+    st.slide = flags.includes("s");
+  }
+};
+
+export function demoPattern(): Pattern {
+  const p = newPattern();
+  hits(p, 0, [0, 4, 8, 12], [0, 8]);
+  hits(p, 1, [4, 12], [12]);
+  hits(p, 2, [0, 2, 4, 6, 8, 10, 12, 14, 15], [2, 10]);
+  hits(p, 3, [6, 14]);
+  hits(p, 4, [4, 12, 13]);
+  hits(p, 5, [3, 7, 11, 14], [7]);
+  line(p, BASS_TRACK, [
+    [0, 24, "a"], [2, 24], [3, 36, "s"], [6, 27, "a"], [8, 24], [10, 31, "s"], [11, 29], [14, 27, "a"], [15, 36, "s"],
+  ]);
+  line(p, TONE_TRACK, [[0, 55], [3, 58], [7, 62, "a"], [10, 58], [12, 55]]);
+  // start with a bright kit and acid preset values (loaded by the presets module at boot)
+  p.tracks[TONE_TRACK].level = 0.55;
+  return p;
+}
+
+// --- pattern edits (pure; each returns a new pattern) -----------------------------------------
+
+export function withPattern(p: Pattern, edit: (draft: Pattern) => void): Pattern {
+  const d = clonePattern(p);
+  edit(d);
+  return d;
+}
+
+export function clearTrackSteps(p: Pattern, track: number) {
+  const spec = TRACKS[track];
+  for (const s of p.tracks[track].steps) {
+    s.on = false;
+    s.acc = false;
+    s.slide = false;
+    delete s.gate;
+    delete s.parameterLocks;
+    s.note = spec.defaultNote ?? 0;
+  }
+}
+
+/** A quick, musical starting point for one track (the RND button). */
+export function randomizeTrack(p: Pattern, track: number, rnd: () => number = Math.random, key?: ProjectScale) {
+  const spec = TRACKS[track];
+  const len = p.length;
+  clearTrackSteps(p, track);
+  const steps = p.tracks[track].steps;
+  const pick = <T,>(a: readonly T[]) => a[Math.floor(rnd() * a.length)];
+  if (spec.role === "drum") {
+    const density: Record<number, number[]> = {
+      0: [0.9, 0.05, 0.35, 0.05],
+      1: [0, 0.8, 0.05, 0.8],
+      2: [0.5, 0.9, 0.5, 0.9],
+      3: [0.02, 0.45, 0.02, 0.2],
+      4: [0, 0.6, 0.05, 0.5],
+      5: [0.2, 0.3, 0.3, 0.35],
+    };
+    const d = density[track] ?? [0.3, 0.3, 0.3, 0.3];
+    for (let i = 0; i < len; i++) {
+      const beatPos = i % 4;
+      steps[i].on = rnd() < d[beatPos];
+      steps[i].acc = steps[i].on && rnd() < 0.2;
+    }
+    return;
+  }
+  const lo = spec.noteLo ?? 0;
+  const hi = spec.noteHi ?? 127;
+  let notes: number[];
+  if (key && !isChromatic(key)) {
+    // the project's scale over one octave from its root, with the root favoured
+    const root = rootAtOrAbove(key, lo + (spec.role === "bass" ? 0 : 12));
+    const inRange = notesInRange(key, root, root + 12).filter((n) => n >= lo && n <= hi);
+    notes = inRange.length ? [root, root, ...inRange] : [root];
+  } else {
+    const base = spec.role === "bass" ? 24 : 48;
+    notes = [0, 0, 3, 5, 7, 10, 12, 0, 7].map((o) => Math.min(hi, Math.max(lo, base + o)));
+  }
+  let prev = false;
+  for (let i = 0; i < len; i++) {
+    const on = rnd() < (i % 4 === 0 ? 0.85 : i % 2 === 0 ? 0.55 : 0.4);
+    const s = steps[i];
+    s.on = on;
+    if (!on) { prev = false; continue; }
+    s.note = pick(notes);
+    s.acc = rnd() < 0.25;
+    s.slide = prev && rnd() < 0.3;
+    prev = true;
+  }
+}
+
+// --- app state -------------------------------------------------------------------------------
+
+export function initialState(): AppState {
+  return {
+    projectName: "",
+    patterns: Array.from({ length: NUM_PATTERNS }, (_, i) => (i === 0 ? demoPattern() : newPattern())),
+    chain: [],
+    chainOn: false,
+    bpm: 128,
+    swing: 0.5,
+    pattern: 0,
+    scale: defaultScale(),
+    arp: Array.from({ length: NUM_TRACKS }, defaultArp),
+    mutes: new Array(NUM_TRACKS).fill(false),
+    solos: new Array(NUM_TRACKS).fill(false),
+    focus: BASS_TRACK,
+    page: 0,
+    selStep: -1,
+    follow: false,
+    keyHighlight: loadKeyHighlight(),
+    storageBlocked: false,
+    tab: "seq",
+    seqView: "steps",
+    audio: "off",
+    audioError: "",
+    playing: false,
+    hostBpm: null,
+    playPattern: 0,
+    chainPos: 0,
+    cue: null,
+    fxPlay: true,
+    write: false,
+    erase: false,
+    rec: false,
+    punch: 0,
+    punchSel: 1,
+    chainEdit: false,
+    copyArm: false,
+    plock: false,
+  };
+}
+
+const KEY_HL = storageKey("keyHighlight");
+
+function loadKeyHighlight(): boolean {
+  try {
+    return localStorage.getItem(KEY_HL) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+export function saveKeyHighlight(on: boolean): void {
+  try {
+    localStorage.setItem(KEY_HL, on ? "on" : "off");
+  } catch {
+    /* storage blocked: the setting just won't persist */
+  }
+}
