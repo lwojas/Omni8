@@ -232,6 +232,9 @@ describe("the graph follows the rig", () => {
     gb.samples = new Map();
     gb.loading = new Map();
     gb.loops = new Map();
+    gb.lastSample = new Map();
+    gb.lfoParams = Array.from({ length: NUM_TRACKS }, () => new Map());
+    gb.lfoKeys = new Set();
     gb.ensureSample = vi.fn(() => Promise.resolve());
     return { gb: gb as Groovebox, created, removed, offs, released };
   }

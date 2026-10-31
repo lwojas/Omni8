@@ -8,7 +8,7 @@ import { NUM_TRACKS } from "./spec";
 import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type Pattern } from "./state";
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
-import { sanitizeLfos } from "./lfo";
+import { newLfos, sanitizeLfos } from "./lfo";
 import { filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
 import { normalizeScale, type ProjectScale } from "./scale";
 import { CURRENT_STORE, idbRequest, openDb, SAVES_STORE, txDone } from "./db";
@@ -122,15 +122,22 @@ function compactPattern(p: Pattern | null, rig: Rig): Pattern | null {
       const note = trackProfile(rig, i).defaultNote;
       let n = t.steps.length;
       while (n > 0 && isBlankStep(t.steps[n - 1], note)) n--;
-      return n === t.steps.length ? t : { ...t, steps: t.steps.slice(0, n) };
+      // LFOs that are all untouched are what a fresh track has: left out too
+      const { lfos, ...rest } = t;
+      const plainLfos = JSON.stringify(lfos) === PLAIN_LFOS;
+      if (n === t.steps.length && !plainLfos) return t;
+      return { ...(plainLfos ? rest : t), steps: t.steps.slice(0, n) } as typeof t;
     }),
   };
 }
+
+const PLAIN_LFOS = JSON.stringify(newLfos());
 
 /** Undoes `compactPattern` in place (a no-op for a full pattern, so files and older snapshots read the same). */
 function expandPattern(p: Pattern | null, rig: Rig): void {
   if (!p || !Array.isArray(p.tracks)) return;
   p.tracks.forEach((t, i) => {
+    if (t && !t.lfos) t.lfos = newLfos();
     if (!Array.isArray(t?.steps) || t.steps.length >= MAX_STEPS) return;
     const note = trackProfile(rig, i).defaultNote;
     for (let n = t.steps.length; n < MAX_STEPS; n++) t.steps.push(emptyStep(note));
