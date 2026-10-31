@@ -7,6 +7,7 @@ import { DEFAULT_SAMPLES, FACTORY_SAMPLES, type SampleInfo } from "./samples";
 import { defaultArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { defaultScale, isChromatic, notesInRange, rootAtOrAbove, type ProjectScale } from "./scale";
+import { newLfos, type Lfo } from "./lfo";
 import { newDelay, newDist, newFilter, newReverb, type DelaySend, type ReverbSend, type TrackFilter } from "./trackfx";
 
 export const MAX_STEPS = 64;
@@ -63,6 +64,8 @@ export interface TrackPattern {
   dist: number;
   /** The LP/HP filter insert. Only a track with no synth shows it; on a synth track it is held open. */
   filter: TrackFilter;
+  /** The track's LFOs (see lfo.ts). */
+  lfos: Lfo[];
   /** Punch FX send gate: false keeps the track out of the punch section (neither fed nor taken over). */
   punch: boolean;
   /** Octave shift for melodic tracks. */
@@ -208,6 +211,7 @@ export function newTrackPattern(rig: Rig, track: number): TrackPattern {
     rev: newReverb(track),
     dist: newDist(),
     filter: newFilter(),
+    lfos: newLfos(),
     punch: true,
     oct: 0,
   };

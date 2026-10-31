@@ -3,6 +3,7 @@
 import { normalizeArp, type ArpSettings } from "./arp";
 import { controller } from "./controller";
 import { defaultSlotSound, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
+import type { Lfo } from "./lfo";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
 import { clearTrackSteps, GATES, newPattern, PAGE, randomizeTrack, type Pattern } from "./state";
@@ -110,6 +111,11 @@ export function setLockable(track: number, id: string, value: number): void {
   else setReverb(track, { send: value });
 }
 
+/** Edit LFO `index` of a track (in the current pattern). */
+export function setLfo(track: number, index: number, patch: Partial<Lfo>): void {
+  editPattern((p) => { Object.assign(p.tracks[track].lfos[index], patch); });
+}
+
 /** A sound knob of a slot moved: see `setLockable`. */
 export const setSoundControl = (track: number, slot: 0 | 1, at: number, value: number): void => setLockable(track, soundParam(track, slot, at).id, value);
 
@@ -158,7 +164,9 @@ function replaceSlot(track: number, slot: 0 | 1, next: SlotRig, keep?: (at: numb
         const { parameterLocks: _drop, ...rest } = s;
         return { ...rest, note, ...(after.melodic ? {} : { slide: false }), ...(hasLocks ? { parameterLocks: locks } : {}) };
       });
-      return { ...tp, slots, steps, ...(insertMoves ? { dist: 0, filter: newFilter() } : {}) };
+      // an LFO on what went away is switched off with it
+      const lfos = tp.lfos.map((l) => (l.target.startsWith(lockPrefix) || (insertMoves && (l.target === "fx.distortion" || l.target.startsWith("fx.filter"))) ? { ...l, on: false, target: "" } : l));
+      return { ...tp, slots, steps, lfos, ...(insertMoves ? { dist: 0, filter: newFilter() } : {}) };
     }),
   }));
   setState({

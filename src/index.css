@@ -2723,3 +2723,43 @@ select.chip.variant {
   overflow-y: auto;
   align-content: flex-start;
 }
+
+/* ---- LFO button + modal ------------------------------------------------------------------------ */
+
+.lfo-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+.lfo-modal {
+  width: min(460px, 100%);
+}
+.lfo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+}
+.lfo-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.lfo-row[data-on="false"] .lfo-body {
+  opacity: 0.55;
+}
+.lfo-head,
+.lfo-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lfo-head .variant {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.lfo-knobs {
+  --ks: 44px;
+  margin: 0 0 0 auto;
+  grid-template-columns: repeat(2, 64px);
+}
