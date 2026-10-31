@@ -39,7 +39,7 @@ export interface VoiceSpec {
   kind?: InstrumentKind;
   /** Plays the step's note (piano roll, arp, note range); otherwise a fixed-pitch hit. */
   pitched: boolean;
-  accent: "--drum" | "--bass" | "--tone";
+  accent: "--drum" | "--bass" | "--tone" | "--synth";
   /** The engine's own knobs, at most `ENGINE_KNOBS`. */
   controls: readonly ControlSpec[];
   /** Engine parameters pinned to fixed values (not exposed). */
@@ -126,7 +126,7 @@ export const DRUM_VOICE_KEYS = ["kick", "snare", "clap", "chat", "ohat", "tom"] 
 // --- the other engines ---------------------------------------------------------------------------------
 
 const ACID: VoiceSpec = voice({
-  key: "acid", engine: "acid", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--bass", pitched: true,
+  key: "acid", engine: "acid", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--synth", pitched: true,
   controls: [
     // Ranges set from offline renders of the unchanged webdsp bass: above ~1 kHz the filter adds nothing at bass pitches, ENV MOD
     // saturates by ~0.5 on low notes, BITE past ~0.75 trades onset brightness and body level for onset loudness, DECAY below
@@ -148,7 +148,7 @@ const ACID: VoiceSpec = voice({
 });
 
 const FM: VoiceSpec = voice({
-  key: "fm", engine: "fm", name: "FM", short: "FM", desc: "TWO-OP FM", kind: InstrumentKind.Fm, accent: "--tone", pitched: true,
+  key: "fm", engine: "fm", name: "FM", short: "FM", desc: "TWO-OP FM", kind: InstrumentKind.Fm, accent: "--synth", pitched: true,
   controls: [
     { key: "color", label: "COLOR", param: FmParam.Ratio, lo: 0, hi: FM_COLORS.length - 1, curve: "lin", unit: "", def: 1, steps: FM_COLORS },
     lin("depth", "DEPTH", FmParam.Timbre, 0.05, 0.9, 0.35),
@@ -300,7 +300,7 @@ export interface TrackProfile {
   melodic: boolean;
   /** The track's INSERT FX: distortion when a slot is a synth (a pitched engine), otherwise the LP/HP filter. */
   insert: "dist" | "filter";
-  accent: "--drum" | "--bass" | "--tone";
+  accent: "--drum" | "--bass" | "--tone" | "--synth";
   /** "KICK + SAMPLE", or "EMPTY". */
   name: string;
   /** The first slot's short name, and both slots' names with no spaces ("KICK+SMPL"): the one-line label of the track rail. */
