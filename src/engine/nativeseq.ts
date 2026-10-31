@@ -192,6 +192,7 @@ function noteEvents(n: StepNote, rig: Rig, sounds: SlotSounds, ctx: NativeCtx): 
       if (sample === undefined) continue;
       out.push({
         beat, kind: "sample", sample, bus: ctx.ids.slotBus[n.track][play.slot], gain: play.velocity,
+        track: n.track * 2 + play.slot, mono: true,
         ...(play.pitch ? { pitch: play.pitch } : {}),
         ...(play.loop ? { loop: true } : {}),
         ...(play.duration !== undefined ? { durationBeats: play.duration * BEATS_PER_SECOND } : {}),

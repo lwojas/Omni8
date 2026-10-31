@@ -251,6 +251,8 @@ export class Groovebox {
   private readonly loading = new Map<string, Promise<void>>();
   /** Looping sample voices still sounding, by `track:slot`: released when the transport stops or the slot changes. */
   private readonly loops = new Map<string, Set<VoiceHandle>>();
+  /** The last sample voice of each slot: a sample slot is monophonic, so a new hit releases it. */
+  private readonly lastSample = new Map<string, VoiceHandle>();
 
   /** The graph's ids, for the pure write functions (and the native sequence, which writes the same parameters). */
   readonly ids: GraphIds;
@@ -478,12 +480,16 @@ export class Groovebox {
     const envelope = play.loop
       ? { attack: 0, decay: 0, sustain: 1, release: 0.03 }
       : play.decay !== undefined ? { attack: 0, decay: Math.min(play.decay, seconds), sustain: 0, release: 0.01 } : undefined;
+    const slotKey = `${track}:${play.slot}`;
+    const prev = this.lastSample.get(slotKey);
+    if (prev !== undefined) this.runtime.release(prev);
     const handle = this.runtime.trigger({
       sampleId: s.id, bus: this.slotBus[track][play.slot], time: play.time, gain: play.velocity, pitch: play.pitch, start, end,
       loop: play.loop, ...(play.duration !== undefined ? { duration: play.duration } : {}), ...(envelope ? { envelope } : {}),
     });
+    this.lastSample.set(slotKey, handle);
     if (play.loop) {
-      const key = `${track}:${play.slot}`;
+      const key = slotKey;
       let set = this.loops.get(key);
       if (!set) this.loops.set(key, (set = new Set()));
       set.add(handle);
@@ -493,6 +499,7 @@ export class Groovebox {
   /** Release held notes and drop scheduled ones (transport stop). */
   silence(): void {
     this.runtime.cancelScheduled();
+    this.lastSample.clear();
     // the restores that were scheduled are gone with the rest: the engine may hold locked values, so forget what it holds
     this.forgetLocks();
     for (let t = 0; t < NUM_TRACKS; t++) {
