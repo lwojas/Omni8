@@ -185,9 +185,9 @@ export function SoundPanel() {
         {!voice && <span className="silk empty-slot">PICK AN ENGINE FOR SLOT {SLOT_NAMES[slot]}</span>}
       </div>
       {profile.insert === "dist" ? <DistortionBar track={track} locks={locks} /> : <FilterBar track={track} locks={locks} />}
-      <LfoButton track={track} />
       </div>
       <PlockBar track={track} />
+      <LfoButton track={track} />
       <div className="sends" role="group" aria-label="FX sends">
         <span className="silk">SENDS</span>
         <div className="knobs sends-knobs">
