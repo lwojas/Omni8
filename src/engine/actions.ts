@@ -40,19 +40,15 @@ export function tapStep(track: number, step: number): void {
   controller.audition(track, cur.note);
 }
 
-/** Long-press a step: accent a drum hit; select (and place) a melodic step for editing. */
+/** Select a step (Shift+click) without changing it: drums get the ACCENT button for it, melodic steps their editor. */
+export function selectStep(track: number, step: number): void {
+  setState({ focus: track, selStep: step });
+}
+
+/** Long-press a step: select it (for a drum step, only select; a melodic step is also placed). */
 export function holdStep(track: number, step: number): void {
   if (getState().plock) return selectLockStep(track, step);
-  if (!trackProfile(getState().rig, track).melodic) {
-    editPattern((p) => {
-      const s = p.tracks[track].steps[step];
-      s.acc = s.on ? !s.acc : true;
-      s.on = true;
-    });
-    setState({ focus: track });
-    controller.audition(track);
-    return;
-  }
+  if (!trackProfile(getState().rig, track).melodic) return selectStep(track, step);
   editPattern((p) => { p.tracks[track].steps[step].on = true; });
   setState({ focus: track, selStep: step });
 }
