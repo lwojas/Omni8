@@ -1129,16 +1129,10 @@ select.chip.variant {
   background: var(--acc);
   color: var(--ink);
 }
-/* played keys: yellow for the acid bass, blue for the FM */
+/* played keys: one highlight colour on every instrument, the play button blue */
 .key[data-hl="true"] {
-  background: var(--hl);
+  background: var(--bass);
   color: var(--ink);
-}
-.key[data-track="6"] {
-  --hl: #ffd400;
-}
-.key[data-track="7"] {
-  --hl: #3d7bff;
 }
 
 /* ---- mixer ------------------------------------------------------------------------------------ */
