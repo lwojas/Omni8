@@ -16,7 +16,7 @@
   --silk: #7d8396;
   --text: #e3e2e6;
   --drum: #00c8ff;
-  --synth: #006eff;
+  --synth: #b6baff;
   --bass: #00eeff;
   --tone: #00f0ff;
   --write: #ff9900;
@@ -2756,6 +2756,22 @@ select.chip.variant {
 .lfo-btn {
   margin-top: 10px;
   justify-self: start;
+}
+/* below the wide layout the TWEAK buttons and LFO share a row, LFO set apart with a wider gap; the wide
+   layout places them in its grid itself, so there the wrapper steps out of the way */
+.plock-row {
+  display: flex;
+  align-items: center;
+  column-gap: 24px;
+}
+.plock-row .plock-bar {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .plock-row {
+    display: contents;
+  }
 }
 .lfo-modal {
   width: min(460px, 100%);

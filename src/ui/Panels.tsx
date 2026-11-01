@@ -131,7 +131,6 @@ function PlockBar({ track }: { track: number }) {
     <div className="plock-bar" role="group" aria-label="Step tweaks">
       <button type="button" className="btn sm" data-active={on} aria-pressed={on} onClick={() => setPlockMode(!on)}>TWEAK</button>
       <button type="button" className="btn sm" disabled={!locked} aria-label="Clear the selected step's tweaks" onClick={() => clearStepLocks(track, selStep)}>{phone ? "CLR" : "CLR STEP"}</button>
-      {on && <span className="silk">{selStep < 0 ? "SELECT A STEP, THEN TURN A KNOB" : `STEP ${selStep + 1} · KNOBS TWEAK THIS STEP ONLY`}</span>}
     </div>
   );
 }
@@ -188,8 +187,10 @@ export function SoundPanel() {
       </div>
       {profile.insert === "dist" ? <DistortionBar track={track} locks={locks} /> : <FilterBar track={track} locks={locks} />}
       </div>
-      <PlockBar track={track} />
-      <LfoButton track={track} />
+      <div className="plock-row">
+        <PlockBar track={track} />
+        <LfoButton track={track} />
+      </div>
       <div className="sends" role="group" aria-label="FX sends">
         <span className="silk">SENDS</span>
         <div className="knobs sends-knobs">
