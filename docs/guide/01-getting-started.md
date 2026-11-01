@@ -1,16 +1,24 @@
 # Getting started
 
-Hybrid.8 runs in the browser. Open it, tap **START**, and a groove is already playing. Everything below is a way of
-changing that groove into yours.
+Hybrid.8 is a groovebox that runs in your web browser. Open it, tap **START**, and a beat is already playing. Everything
+in this guide is a way of turning that beat into your own.
 
-## The machine
+## Meet the machine
 
-Eight tracks. **Every track has two slots, A and B, and each slot holds a sound engine (or nothing).** Both slots play at once, so a
-track can be a kick under a sample, two samples layered, an acid bass with a sample under it, or an FM and a pad together. One
-shared effects section.
+Hybrid.8 has eight tracks. **Every track has two sound slots, A and B, and each slot can hold an instrument (or nothing).**
+Both slots play at the same time, so one track can be a kick with a sample underneath, two samples layered, an acid bass
+with a snap on top, or a synth and a pad together.
 
-The engines are **ACID**, **FM**, **PAD**, **DRUM** (kick, snare, clap, closed hat, open hat, tom), **PERC** (a percussion synth)
-and **SAMPLE**. The tracks start like this:
+The instruments are:
+
+- **ACID** – a squelchy bass synth
+- **FM** – a bright, bell-like synth
+- **PAD** – a soft, drifting pad
+- **DRUM** – kick, snare, clap, closed hat, open hat and tom
+- **PERC** – a small percussion synth
+- **SAMPLE** – plays a recorded sound
+
+Here is how the eight tracks are set up when you start:
 
 | # | Track | Slot A | Slot B |
 |---|---|---|---|
@@ -23,51 +31,56 @@ and **SAMPLE**. The tracks start like this:
 | 7 | **ACID+SMPL** | Acid bass | Sample (snap) |
 | 8 | **FM+PAD** | FM | Pad |
 
-Change any of it from **SOUND**: pick the slot tab (**A** or **B**), then an engine. A track with a pitched engine (ACID, FM,
-PAD) gets the keyboard and arpeggiator; any other track gets drum pads. A sample on a melodic track follows its notes.
+You can change any of this in **SOUND**: pick slot **A** or **B**, then pick an instrument. Tracks with a melodic
+instrument (ACID, FM or PAD) get a keyboard and an arpeggiator. Every other track gets drum pads. A sample on a melodic
+track plays along with that track's notes.
 
-The two hats choke each other: an open hat is cut by the next closed hat, as it would be on a real kit.
+The two hats work like a real kit: an open hat is cut off when the next closed hat hits.
 
-## The screen
+## Finding your way around
 
-Hybrid.8 adapts to the device. The pieces are the same everywhere; only their arrangement changes.
+Hybrid.8 fits itself to your screen. On a phone, the controls are split across tabs. On a computer or tablet, nearly
+everything is on one page. The controls are the same either way.
 
-**Phone** — five tabs along the bottom:
+**On a phone**, five tabs run along the bottom:
 
-| Tab | What is on it |
+| Tab | What you'll find |
 |---|---|
-| **SEQ** | Track strip, step pads, keyboard, written-FX lane, punch pads |
-| **SOUND** | Slot tabs and engine chips, the slot's knobs, the INSERT FX, the track's delay and reverb sends |
+| **SEQ** | The track strip, step pads, keyboard, the effects you've recorded, and the punch pads |
+| **SOUND** | The slot tabs, instrument choices, the knobs, the track's insert effect, and its delay and reverb |
 | **MIX** | Level, mute and solo for all eight tracks |
-| **FX** | Track FX (delay and reverb per track) and the Punch FX panel |
-| **PTN** | Pattern slots, copy, clear, chain |
+| **FX** | Each track's delay and reverb, plus the Punch FX |
+| **PTN** | Your pattern slots, copy, clear and chain |
 
-**Wide screens (1100 px and up)** — everything is on one page. Transport and pattern navigation run across the top.
-Below them a band holds the instrument knobs, the track FX and the Punch FX. The sequencer takes the rest of the
-width, with a slim mixer beside it. Tracks with only drums and samples get a block of large pads; tracks with a pitched engine get a two-octave keyboard.
-In a short window (820 px high or less, such as a DAW's default plugin window) the band is compacted: the delay and reverb
-sends move to a strip under the knobs, so the keyboard stays on screen.
+**On a computer or large tablet**, everything sits on one page. The play controls and pattern buttons run across the top.
+Under them is a band with the instrument knobs, the track effects and the Punch FX. The sequencer fills the rest of the
+screen, with a slim mixer beside it. Tracks made only of drums and samples show big pads; tracks with a melodic
+instrument show a two-octave keyboard.
 
-## The transport bar
+If your window is short (for example, when Hybrid.8 is running as a plugin inside your music software), the delay and
+reverb knobs move to a strip under the main knobs so the keyboard still fits on screen.
 
-| Control | Does |
+## The play controls
+
+| Control | What it does |
 |---|---|
-| **PLAY / STOP** | Starts and stops the groove. `Space` does the same on a keyboard. |
-| **BPM** | `−` and `+` move the tempo in 1 BPM steps, from 60 to 200. |
-| **PTN / STEP** | The current pattern and the step being played. Tap to open the pattern list. |
-| **SWING** | Delays every second 16th note. 50% is straight; the knob goes to 75%. Double-tap to reset. |
-| **SAVE / LOAD / ☰** | Projects, key and scale, display options, MIDI. See [Projects](07-projects.md). |
+| **PLAY / STOP** | Starts and stops the beat. On a computer keyboard, press `Space`. |
+| **REC** | Records the notes you play on the keyboard onto the steps while the beat is playing. See [Sequencing](02-sequencing.md#recording-notes-as-you-play). |
+| **BPM** | `−` and `+` change the tempo one beat per minute at a time, from 60 to 200. |
+| **PTN / STEP** | Shows which pattern is playing and which step you're on. Tap it to open the pattern list. |
+| **SWING** | Pushes every second 16th note a little late for a looser feel. 50% is perfectly straight; the knob goes up to 75%. Double-tap to reset. |
+| **SAVE / LOAD / ☰** | Saving, loading, key and scale, display options and MIDI. See [Projects](07-projects.md). |
 
-## Controls you will use everywhere
+## Using the controls
 
-- **Knobs** turn by dragging up/down or left/right. **Double-tap** returns a knob to its default. The arrow keys nudge
-  a focused knob.
-- **Sliders** work the same way; double-tap resets.
-- **Destructive buttons** (every CLR button) ask you to tap twice. A stray tap never wipes a pattern.
+- **Knobs**: drag up/down or left/right to turn them. **Double-tap** a knob to put it back to its starting value. If a
+  knob is selected, the arrow keys nudge it.
+- **Sliders** work the same way, and a double-tap resets them too.
+- **Clear buttons** (anything that says CLR) ask you to tap twice, so one accidental tap never wipes your work.
 
 ## Keyboard shortcuts
 
-| Key | Does |
+| Key | What it does |
 |---|---|
 | `Space` | Play / stop |
 | `1` – `8` | Select a track and hear it |
@@ -75,13 +88,15 @@ sends move to a strip under the knobs, so the keyboard stays on screen.
 
 ## Your first five minutes
 
-1. **Tap START.** The demo groove plays.
-2. **Mute and solo.** Press **M** on the kick, then bring it back. Press **S** on the bass to hear it alone.
-3. **Change a sound.** Select a track, open **SOUND** (or look at the band on a wide screen), tap slot **B** and pick another
-   engine. Choose **SAMPLE** and tap the sample name to pick from the shared library.
-4. **Move a knob.** Select **ACID**, turn **FILTER** and **RES** while it plays.
-5. **Punch something in.** Hold **FILTER** or **SWEEP** in the punch pads. Let go. Now arm **REC FX**, hold a pad
-   during the loop, and the move is recorded and replays every time round.
-6. **Save.** Name it with **SAVE**. Hybrid.8 also autosaves, so a reload picks up where you stopped.
+1. **Tap START.** The demo beat starts playing.
+2. **Mute and solo.** Press **M** on the kick to drop it out, then press it again to bring it back. Press **S** on the
+   bass to hear it on its own.
+3. **Change a sound.** Select a track, open **SOUND** (or look at the band across the top on a larger screen), tap slot
+   **B** and pick a different instrument. Choose **SAMPLE** and tap the sample's name to browse the sound library.
+4. **Move a knob.** Select **ACID**, then turn **FILTER** and **RES** while the beat plays.
+5. **Punch something in.** Hold the **FILTER** or **SWEEP** pad, then let go. Now press **REC FX**, hold a pad while the
+   pattern loops, and your move is recorded and plays back every time round.
+6. **Save.** Give your project a name with **SAVE**. Hybrid.8 also saves for you as you go, so if you close the page
+   and come back, you'll pick up where you left off.
 
 Next: [Sequencing](02-sequencing.md).

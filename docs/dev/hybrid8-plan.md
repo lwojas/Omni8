@@ -1,17 +1,21 @@
 # Hybrid.8: architecture audit and implementation plan
 
-Status: Stages 1 to 5 implemented; Stage 6 partly done. 194 tests and the production build pass; phone (360 px) and desktop
-were driven in a real browser (slot tabs, engine swap during playback, sample modal) with no console errors and no horizontal scroll.
+> **Historical record.** This is the audit and plan that took the one-instrument-per-track reference (Pulse.8) to the two-slot
+> Hybrid.8. It is kept for the reasoning. Where it disagrees with the code, the code and [architecture.md](architecture.md) win.
+> What changed since it was written:
+>
+> - **Built as planned:** the `rig`, per-slot buses, the engine catalogue (`catalogue.ts`), the shared sample library (`samples.ts`),
+>   slot tabs, engine chips and the sample modal.
+> - **Different from the plan:** PLUCK and SAW are shelved ([shelved-engines.md](shelved-engines.md)); there is no per-slot FILTER knob
+>   (the INSERT FX is distortion on a track with a synth and an LP/HP filter on any other); a slot has `SLOT_KNOBS` = 7 positions, six
+>   engine knobs then LEVEL; parameter ids are `track.N.a.K` / `track.N.b.K` as planned; rail labels are one line (CH, OH, SMPL).
+> - **Added later, not in the plan:** per-track LFOs (`lfo.ts`), realtime note recording (`record.ts`), TWEAK (parameter locks) renamed
+>   from P-LOCK, a drum ACCENT button, a per-track Punch FX send gate, monophonic sample slots, and the Hybrid.8 renames in the plugin
+>   and deploy files.
+> - **Still true:** native `Sequence` sample events lack start/end/decay, so the plugin plays whole samples.
 
-Decisions taken: per-trigger envelope added to webdsp (merged to webdsp `main`; this repo depends on it from GitHub);
-factory samples are generated in code; native `Sequence` sample events still lack start/end/decay (web build is the target).
-
-Not done yet: audible check by ear, the plugin build (`vst/`, CMake names, deploy workflow) and the `docs/guide` pages still say Pulse.8.
-
-This document was the Stage 2 audit and the plan for Stages 3 to 6.
-
-> **Update:** PLUCK and SAW are shelved ([shelved-engines.md](shelved-engines.md)). The per-slot FILTER knob is gone: INSERT FX is
-> distortion on a track with a synth and efem's LP/HP filter (CUT, RES, LP/HP) on any other track. The rail labels are one line (CH, OH, SMPL).
+Decisions taken: per-trigger envelope added to webdsp (merged to webdsp `main`; this repo depends on it from GitHub); factory samples
+are generated in code.
 
 ## 1. Where Pulse.8 hard-codes "one instrument per track"
 

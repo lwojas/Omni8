@@ -1,11 +1,5 @@
 # MIDI and external control
 
-> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
-> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
-> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
-> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
-> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
-
 The player's view (which CC does what, how to switch it on) is in the [MIDI guide](../guide/08-midi.md). This page is the design.
 
 ```
@@ -16,7 +10,7 @@ The player's view (which CC does what, how to switch it on) is in the [MIDI guid
  midi/ports.ts   Web MIDI ports      midi/setup.ts   the only MIDI file that imports the app
 ```
 
-- **Parameters** (`engine/params.ts`): stable ids (`track.1.volume`, `track.8.sound.color`, `pattern.select`) over the
+- **Parameters** (`engine/params.ts`): stable ids (`track.1.volume`, `track.8.a.2`, `pattern.select`) over the
   existing store. Each reads AppState and writes through the same actions the UI calls. No second state.
 - **Origin** (`engine/source.ts`): `ui | midi | host | automation | internal`, ambient for one synchronous store write.
   `setParam(id, v, source)` tags the write; the store observer reports every changed parameter with that origin.
@@ -28,20 +22,49 @@ The mapping uses 1-16 (as on a controller). Bytes on the wire use 0-15; the
 conversion is in `midi/control.ts` only. webtracker stores 0-15 in its model and shows 1-16; here the file a person edits
 is the one that speaks 1-16. A parameter without `channel` inherits `defaultChannel`.
 
+## Parameter ids
+
+Ids are 1-based for tracks and permanent once shipped (a DAW binds automation to them):
+
+| Id | Kind | Notes |
+|---|---|---|
+| `track.N.volume` | norm | the pattern's fader level |
+| `track.N.mute`, `track.N.solo` | bool | performance state |
+| `track.N.delaySend`, `track.N.reverbSend` | norm | lockable |
+| `track.N.punchSend` | bool | whether the track takes part in the Punch FX; saved per pattern |
+| `track.N.arp` | bool | melodic tracks only; ignored otherwise |
+| `track.N.distortion` | norm | the INSERT FX of a track with a synth; lockable |
+| `track.N.filterCut`, `track.N.filterRes` | norm | the INSERT FX of the other tracks; lockable |
+| `track.N.filterMode` | int (LP, HP) | not lockable |
+| `track.N.a.K`, `track.N.b.K` (K = 1–7) | norm | knob K of slot A or B by **position**: 1–6 are the engine's own knobs in the order the app shows them, 7 is the slot's LEVEL. Lockable |
+| `pattern.select` | int 0–63 | cues a pattern |
+
+Knobs are addressed by position, not by name, because the engine in a slot can change: `track.1.a.2` is whatever the second knob of
+the engine currently in slot A is. The manifest labels are therefore generic ("Track 1 slot A knob 2"). A position the slot's engine
+has no knob at is accepted and does nothing. Every id exists for every track whatever is in it, so the manifest has a fixed shape.
+
 ## Initial map
-One channel per track (1 KICK … 8 FM), same CCs on each:
+
+One channel per track (track 1 → channel 1 … track 8 → channel 8), the same CCs on each. The numbers live in `midi/mapping.ts`:
 
 | CC | Parameter | CC | Parameter |
 |---|---|---|---|
 | 7 | volume | 20 | mute (0-63 off, 64-127 on; out 0/127) |
 | 12 | delay send | 21 | solo |
-| 91 | reverb send | 22 | arpeggiator (ACID, FM) |
-| 70-75 | the track's knobs in app order | 74 / 71 | ACID filter / resonance (70 env mod, 72 decay, 73 bite, 75 wave) |
-| 77 | ACID and FM distortion (`track.7.distortion`, `track.8.distortion`) | | |
+| 91 | reverb send | 22 | arpeggiator |
+| 77 | distortion | 74 / 71 | filter cutoff / resonance |
+| 78 | filter mode (0-63 LP, 64-127 HP) | 14 / 15 | slot A / slot B LEVEL (knob 7) |
+| 70 72 73 75 76 79 | slot A knobs 1-6 | 102–107 | slot B knobs 1-6 |
 
-Stepped knobs (FM COLOR) split 0-127 into equal bands. CC 10 is unassigned: the app has no pan.
+Stepped knobs (FM COLOR, a sample's PLAY) split 0-127 into equal bands. CC 10 is unassigned: the app has no pan. 71, 74 and 78 follow
+the filter in the author's efem synth, which is why the slot knobs skip them.
+
 Patterns: **Bank Select (CC 0) + Program Change** on the default channel, 4 banks x 16 = 64 patterns. While playing the pattern
-is cued for the next loop (as tapping a slot does). Volume, sends and knobs edit the pattern on screen, as the UI does. Sends and knobs are lockable (`engine/plock.ts`): in P-LOCK mode, with a step selected on the focused track, they read and write that step's parameter lock instead of the base, and a selection change is reported as a value change.
+is cued for the next loop (as tapping a slot does). Volume, sends and knobs edit the pattern on screen, as the UI does.
+
+Sends, slot knobs, distortion and filter cutoff/resonance are lockable (`engine/plock.ts`): in TWEAK mode, with a step selected on the focused
+track, they read and write that step's parameter lock instead of the base, and a selection change is reported as a value change.
+A knob of another track still edits its base.
 
 ## Keyboard (MIDI settings: KEYBOARD, KEY OCTAVE)
 `midi/setup.ts` only. Ports listen to every input and tag each message with its port id; `setup.ts` filters: control (CC, program,

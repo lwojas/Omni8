@@ -14,7 +14,7 @@ engine, its own workflow, its own interface.
 - **Eight tracks, two slots each.** Pick an engine per slot: **ACID** bass (with accent and slide), **FM**, **PAD**, **DRUM** (kick,
   snare, clap, hats, tom), **PERC** or a **SAMPLE** from a library shared by every track. Each has a handful of macro knobs tuned so
   the whole travel sounds good, and each track an INSERT FX: distortion for synths, an LP/HP filter for the rest.
-- **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, hold to accent, swing, a scale-aware
+- **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, ACCENT button, swing, a scale-aware
   keyboard, and an arpeggiator on the melodic tracks.
 - **Punch FX.** Hold a pad and the effect sweeps in: filter, drive, crush, phaser, flanger, dub echo, roll, reverb, filter
   sweep. Arm **REC FX** and the move, with its exact sweep shape, is recorded into the pattern and replayed on the audio clock.

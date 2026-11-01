@@ -22,11 +22,13 @@ The **developer documentation** explains how it works and how to change it.
 
 | | |
 |---|---|
-| [Architecture](dev/architecture.md) | Layers, modules, data flow, principles |
-| [Audio graph](dev/audio-graph.md) | The webdsp topology and the punch chain |
-| [Timing & scheduling](dev/timing.md) | Lookahead, swing, chaining, the playhead, external clock |
-| [State & persistence](dev/state-and-persistence.md) | The data model, storage, migrations |
-| [Extending](dev/extending.md) | Recipes: knobs, tracks, presets, punch FX, scales, parameters, MIDI |
-| [VST3 build](dev/vst.md) | The optional, local-only plugin build; how the project survives closing the window |
-| [MIDI design](dev/midi.md) | The parameter model, origins, echo, clock follower, plugin plans |
+| [Architecture](dev/architecture.md) | The two-slot instrument model, layers, modules, data flow, layout |
+| [Audio graph](dev/audio-graph.md) | The webdsp topology: slot buses, inserts, sends and the punch chain |
+| [Timing & scheduling](dev/timing.md) | Lookahead, swing, chaining, per-track loops, LFOs, note recording, external clock |
+| [State & persistence](dev/state-and-persistence.md) | The data model (rig vs. pattern), storage, migrations |
+| [Extending](dev/extending.md) | Recipes: knobs, engines, drum voices, samples, locks and LFO targets, punch FX, scales, parameters, MIDI |
+| [VST3 build](dev/vst.md) | The optional, local-only plugin build; how the project survives closing the window; what it does not carry yet |
+| [MIDI design](dev/midi.md) | Parameter ids, origins, echo, the keyboard, the clock follower, plugin plans |
+| [Shelved engines](dev/shelved-engines.md) | PLUCK and SAW: out of the selector, still wired |
+| [Design record](dev/hybrid8-plan.md) | The original audit and plan for the two-slot model (historical) |
 | [Development](dev/development.md) | Setup, tests, invariants, deployment, known limits |

@@ -1,139 +1,164 @@
 # Sound design
 
-Every slot exposes a focused set of macro knobs: the engine's own (at most six) and **LEVEL**. Each knob covers only the musical
-part of its engine's range, so the whole travel of a knob sounds good. There is no menu diving.
+Each slot has a small set of knobs: up to six that belong to its instrument, plus **LEVEL**. Every knob only covers the
+range that sounds good, so wherever you turn it, it sounds musical. There are no menus to dig through.
 
-Select a track and open **SOUND** (on a wide screen, the instrument band at the top).
+Select a track and open **SOUND** (on a larger screen, it's the instrument band along the top).
 
-## Slots and engines
+## Slots and instruments
 
-A track has two slots. The **A** and **B** tabs only choose which slot the panel below edits; **both always sound**. Under the tabs,
-the engine chips pick what is in that slot: **ACID**, **FM**, **PAD**, **DRUM**, **PERC**, **SAMPLE**, or **OFF** for an empty slot.
-**DRUM** adds a voice selector (kick, snare, clap, closed hat, open hat, tom); **SAMPLE** adds the sample name.
+A track has two slots. The **A** and **B** tabs only choose which slot you're editing; **both always play**. Under the
+tabs, the instrument buttons choose what's in that slot: **ACID**, **FM**, **PAD**, **DRUM**, **PERC**, **SAMPLE**, or
+**OFF** for an empty slot. **DRUM** adds a drum selector (kick, snare, clap, closed hat, open hat, tom), and **SAMPLE**
+shows the name of the sample.
 
-Changing a slot's engine resets that slot's knobs to the new engine's defaults, in every pattern, and drops that slot's step locks.
-The other slot is never touched. **LEVEL** sets the slot's volume under the track fader, which is how you balance a layer.
+Changing a slot's instrument puts that slot's knobs back to the new instrument's starting values, in every pattern, and
+removes any per-step tweaks for that slot. The other slot is left alone. **LEVEL** sets the slot's volume below the
+track fader, so use it to balance two layers against each other.
 
 ## INSERT FX
 
-Below the knobs, one insert for the whole track, ahead of the sends:
+Below the knobs is one effect that belongs to the whole track. It comes before the delay and reverb:
 
-- A track with a **synth** (ACID, FM or PAD in either slot) has **DIST**, a distortion between the sounds and the fader, so the delay
-  and reverb sends hear it too. It is the same saturation as the DRIVE punch, but a permanent part of the track: 0 is off and more
-  drive adds grit while the output is trimmed to keep the level steady.
-- Any other track (drums, PERC, samples) has a **filter**: **CUT**, **RES** and **LP / HP**. At LP with CUT fully up, or HP with CUT fully
-  down, it does nothing. Switching LP/HP puts CUT at the open end.
+- A track with a **synth** (ACID, FM or PAD in either slot) has **DIST**, a distortion that sits between the sound and
+  the fader, so the delay and reverb hear the distorted sound too. It's the same effect as the DRIVE punch, but built into
+  the track. At 0 it's off, and turning it up adds grit while the volume is kept steady.
+- Any other track (drums, PERC or samples) has a **filter** with **CUT**, **RES** and an **LP / HP** switch. With LP and CUT
+  turned all the way up, or HP and CUT all the way down, the filter does nothing. Switching between LP and HP sets CUT to
+  its fully open position.
 
-Both can be tweaked per step in TWEAK mode and are saved per pattern. If a track changes kind (say a synth is removed), the insert
-that goes away is switched off.
+Both can be changed per step in TWEAK mode, and are saved with each pattern. If a track changes type (for example, you
+remove its synth), the effect that no longer fits is switched off.
 
-## Per-pattern sound
+## LFOs
 
-Sound, level, delay and reverb settings belong to the **pattern**, not the project. Pattern 1 can be a hard kit and pattern 2 a dub
-kit with a different acid patch. Switching pattern during playback changes the sound sample-accurately on the bar line. Which engine
-is in each slot belongs to the **project**: it is the same in every pattern. See [Patterns & songs](06-patterns-and-songs.md).
+An LFO is a slow wobble that moves a knob for you. Each track has three. Press **LFO** under the INSERT FX controls to open
+them. For each one, choose:
 
-## DRUM engine
+- **Target**: what it moves. Any knob in either slot (except a sample's start, end and decay), the delay or reverb send, and
+  the track's distortion or filter.
+- **Wave**: sine, triangle, square or saw.
+- **Rate**: how fast it moves, from very slow to quick. With **SYNC** on, the rate is a note length at your tempo instead,
+  so the wobble stays in time.
+- **Depth**: how far it moves the knob. The wobble swings around where the knob is set, so at 100% it sweeps half the knob's
+  range either side. A negative depth flips it upside down.
 
-| Drum voice | Control | Range (default) |
+If a step has a TWEAK on the same knob, the tweak wins for that step. LFO settings are saved with each pattern. LFOs work in
+the browser version; they don't play inside the VST3 plugin yet.
+
+## Sound belongs to the pattern
+
+Sound, level, delay and reverb settings are saved **with each pattern**, not with the project as a whole. Pattern 1 can
+be a hard-hitting kit and pattern 2 a dubby one with a different acid sound. If you switch pattern while the beat plays,
+the sound changes exactly on the bar line. Which instrument is in each slot is the one thing that stays the same across
+the whole project. See [Patterns & songs](06-patterns-and-songs.md).
+
+## DRUM
+
+| Drum | Knob | Range (starting value) |
 |---|---|---|
-| **KICK** | TUNE | 35 – 80 Hz (50): the pitch the body settles on |
-| | SWEEP | 0.4 – 3.6 oct: how far above TUNE the pitch sweep starts (2.5) |
-| | DECAY | 120 ms – 1.1 s: body length (450 ms) |
-| | PUNCH | level of the attack click |
-| | DRIVE | saturation |
-| **SNARE** | TUNE | 140 – 300 Hz (185): body pitch |
+| **KICK** | TUNE | 35 – 80 Hz (50): the pitch the kick settles on |
+| | SWEEP | 0.4 – 3.6 octaves (2.5): how far above that pitch the kick starts before dropping |
+| | DECAY | 120 ms – 1.1 s (450 ms): how long the kick rings |
+| | PUNCH | how loud the click at the start is |
+| | DRIVE | distortion |
+| **SNARE** | TUNE | 140 – 300 Hz (185): the pitch of the body |
 | | DECAY | 80 – 500 ms (220 ms) |
-| | SNAP | opening crack: transient level and noise brightness |
-| | RATTLE | balance of noisy rattle against the tonal body |
+| | SNAP | the crack at the start: how loud and how bright |
+| | RATTLE | the mix of snare rattle against the tonal body |
 | **CH** (closed hat) | PITCH | ±6 semitones |
 | | DECAY | 20 – 180 ms (60 ms) |
-| | METAL | amount of inharmonic, metallic content |
+| | METAL | how metallic and clangy it sounds |
 | | BRIGHT | brightness |
 | **OH** (open hat) | PITCH | ±6 semitones |
 | | DECAY | 200 ms – 1.1 s (450 ms) |
 | | METAL, BRIGHT | as above |
 | **CLAP** | TUNE | 800 – 2400 Hz (1300) |
 | | DECAY | 100 – 600 ms (250 ms) |
-| | SPREAD | time between the hits of the clap's burst cluster |
-| | SNAP | sharpness of the bursts |
+| | SPREAD | the gap between the little claps that make up the burst |
+| | SNAP | how sharp the claps are |
 | **TOM** | TUNE | 80 – 360 Hz (120) |
-| | SWEEP | 0 – 1.6 oct pitch drop (0.6) |
+| | SWEEP | 0 – 1.6 octaves (0.6): how far the pitch drops |
 | | DECAY | 120 – 900 ms (450 ms) |
-| | BODY | membrane overtones and stick tick |
-| | DAMP | muffling: shorter ring, darker tone |
+| | BODY | the drum-skin ring and the stick click |
+| | DAMP | muffling: a shorter, darker sound |
 
 ## PERC
 
-A small percussion synth (two oscillators, noise and a pitch sweep). Hits at a fixed pitch.
+A small percussion synth. Every hit plays at the same pitch.
 
-| Control | Does |
+| Knob | What it does |
 |---|---|
 | **TUNE** | 60 – 800 Hz (180) |
-| **SWEEP** | 0 – 4 oct pitch drop (1.5) |
+| **SWEEP** | 0 – 4 octaves (1.5): how far the pitch drops |
 | **DECAY** | 50 ms – 1 s (250 ms) |
-| **NOISE** | level of the noise layer |
-| **FM** | frequency modulation between the oscillators |
-| **DRIVE** | saturation |
+| **NOISE** | how much noise is mixed in |
+| **FM** | how much the two tones twist each other's sound |
+| **DRIVE** | distortion |
 
 ## ACID
 
-A monophonic bass voice with a resonant low-pass filter that an envelope snaps open on every note.
+A single-note bass synth with a resonant filter that snaps open on every note.
 
-| Control | Does |
+| Knob | What it does |
 |---|---|
-| **FILTER** | Cutoff, 90 Hz – 1 kHz |
-| **ENV MOD** | How far each note's envelope opens the filter |
-| **DECAY** | How long the filter takes to close, 60 ms – 1.1 s |
-| **RES** | Resonance. High values squelch and self-oscillate |
-| **BITE** | Onset drive and brightness, and how much velocity (accent) changes the timbre. At 0 an accent is only louder |
-| **WAVE** | Round and subby (sine plus sub) at 0, rich saw at 100% |
+| **FILTER** | How open the filter is, from dark to bright (90 Hz – 1 kHz) |
+| **ENV MOD** | How far each note flings the filter open |
+| **DECAY** | How long the filter takes to close again, 60 ms – 1.1 s |
+| **RES** | Resonance. High settings squelch and even whistle |
+| **BITE** | How much bite and brightness a note starts with, and how much an accent changes the tone. At 0, an accent is only louder |
+| **WAVE** | Round and subby at 0, rich and buzzy at 100% |
 
-Under the knobs, a track with a synth has a **DIST** slider (see INSERT FX below). It is the same saturation as the DRIVE punch, but a permanent part of the voice: 0 is off (the voice is untouched), and more drive adds grit while the output is trimmed to keep the level roughly steady. Like the knobs, it can be locked per step in TWEAK mode and saved per pattern.
+A track with a synth also has a **DIST** slider (see INSERT FX above). At 0 it's off, and turning it up adds grit.
+Like the knobs, it can be changed per step in TWEAK mode and is saved with each pattern.
 
-The filter envelope attacks instantly and falls exponentially. Accent and slide, set per step, do the rest. **WAVE** morphs the oscillator: a sine with a sub-oscillator underneath at 0, a bright saw at 100%, so the fundamental stays present as the filter closes.
+The filter opens the instant a note starts and then closes smoothly. Accent and slide, set per step, do the rest. **WAVE**
+blends between a soft sine with a deep sub-bass underneath and a bright, buzzy saw, so the low end is still there as the
+filter closes.
 
 ## FM
 
-A two-operator FM voice.
+A two-part FM synth, good for bells, plucks and glassy tones.
 
-| Control | Does |
+| Knob | What it does |
 |---|---|
-| **COLOR** | Eight stepped operator ratios: `SUB`, `FULL`, `HOLLOW`, `THIRDS`, `THIN`, `FIFTHS`, `METAL`, `BELL` |
-| **DEPTH** | Resting FM depth: from a pure sine to a rich spectrum |
-| **BITE** | Extra FM depth at the start of each note that decays away: a bright attack |
-| **TONE** | A static low-pass relative to the note: dark fundamental at 0, fully open at 100% |
+| **COLOR** | Eight steps that change the character of the sound: `SUB`, `FULL`, `HOLLOW`, `THIRDS`, `THIN`, `FIFTHS`, `METAL`, `BELL` |
+| **DEPTH** | How rich the sound is, from a pure tone to a bright, harmonic one |
+| **BITE** | An extra burst of brightness at the start of each note that fades away |
+| **TONE** | How dark or bright the sound is: dark at 0, fully open at 100% |
 | **DECAY** | 60 ms – 1.2 s |
 
-COLOR is a choice, not a continuum: it sets the modulator-to-carrier ratio, which decides the harmonic character, and DEPTH, BITE and TONE shape it. Stepped ratios keep every setting musical; continuous ratios mostly sound out of tune.
+COLOR moves in steps rather than smoothly. That's deliberate: each step keeps the sound in tune with itself, whereas
+smooth changes would mostly sound out of tune. DEPTH, BITE and TONE then shape the sound within each color.
 
 ## PAD
 
-A drifting stereo ensemble pad.
+A warm, drifting stereo pad.
 
-| Control | Does |
+| Knob | What it does |
 |---|---|
-| **TONE** | brightness |
-| **MOVE** | slow drift of detune, stereo image and filter |
-| **THICK** | ensemble thickness |
-| **SPACE** | stereo width and diffusion |
-| **ATTACK** | 10 ms – 2 s |
-| **RELEASE** | 100 ms – 3 s |
+| **TONE** | Brightness |
+| **MOVE** | How much the sound slowly drifts and shimmers |
+| **THICK** | How thick and chorus-like it is |
+| **SPACE** | How wide and spacious it sounds |
+| **ATTACK** | How slowly it fades in, 10 ms – 2 s |
+| **RELEASE** | How slowly it fades out, 100 ms – 3 s |
 
 ## SAMPLE
 
-Plays one sample from the **shared library**. The library is one list for the whole project: ten slots on the same kick play one
-copy of it. Tap the sample name for the picker: tap a row to choose it, **▶** to preview, **IMPORT…** to add a WAV, MP3 or OGG
-file (up to 12 MB), **✕** to delete an import that no slot uses. The factory samples are generated by the app.
+Plays one sound from the **shared sample library**. The library is shared by the whole project, so using the same kick in
+ten slots only stores it once. Tap the sample's name to open the picker: tap a row to choose it, **▶** to listen,
+**IMPORT…** to add your own WAV, MP3 or OGG file (up to 12 MB), or **✕** to delete an imported sample that no slot is
+using. The built-in samples are made by the app itself.
 
-| Control | Does |
+| Knob | What it does |
 |---|---|
-| **PLAY** | **ONE-SHOT** plays the sample through; **LOOP** repeats it while the note is held (the step's gate on a melodic track) |
-| **START**, **END** | the part of the sample that plays, as a share of its length |
-| **DECAY** | fade-out length, 30 ms – 4 s. At the top it reads **FULL** and the sample plays out untouched |
-| **LEVEL** | slot volume |
+| **PLAY** | **ONE-SHOT** plays the sample once, all the way through. **LOOP** repeats it for as long as the note is held (as long as the step's gate on a melodic track) |
+| **START**, **END** | Which part of the sample plays, as a share of its full length |
+| **DECAY** | How long the fade-out is, 30 ms – 4 s. At the top it reads **FULL** and the sample plays out untouched |
+| **LEVEL** | The slot's volume |
 
-On a track with a pitched engine the sample follows the notes; on a drum track it always plays at its own pitch. These knobs are
-read when a note starts, so they cannot be locked per step.
+On a melodic track, the sample plays at the pitch of the notes. On a drum track, it always plays at its own pitch. These
+knobs are read when a note starts, so they can't be changed per step.
 
 Next: [Mixing & track FX](04-mixing-and-track-fx.md).

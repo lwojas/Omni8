@@ -1,17 +1,13 @@
 # Extending Hybrid.8
 
-> **Hybrid.8 differs from this page.** The text below was written for the one-instrument-per-track reference and is kept for the parts that
-> did not change (timing, buses, scheduling, persistence mechanics). What changed: a track has two **slots** whose engines live in the
-> project's `rig` (`src/engine/catalogue.ts`, not `TRACKS` in `spec.ts`); knobs are `TrackPattern.slots`, not `sound`; each slot has its own
-> bus into bus A; the INSERT FX is distortion or an LP/HP filter by track kind; samples are a shared library (`samples.ts`). See
-> [hybrid8-plan.md](hybrid8-plan.md) for the design and [shelved-engines.md](shelved-engines.md) for what is switched off.
-
 Recipes for the changes people actually make. Each lists every file you touch and the tests that will tell you if you
 missed one. Run `npm test` and `npm run build` (which type-checks) after each.
 
-- [Add a macro knob to a track](#add-a-macro-knob-to-a-track)
-- [Add a track](#add-a-track)
-- [Add a factory kit or preset](#add-a-factory-kit-or-preset)
+- [Add or change a knob on an engine](#add-or-change-a-knob-on-an-engine)
+- [Add an engine](#add-an-engine)
+- [Add a drum voice](#add-a-drum-voice)
+- [Add a factory sample](#add-a-factory-sample)
+- [Add a lockable parameter (and LFO target)](#add-a-lockable-parameter-and-lfo-target)
 - [Add a Punch FX](#add-a-punch-fx)
 - [Add a scale or genre preset](#add-a-scale-or-genre-preset)
 - [Add an arpeggiator rate or direction](#add-an-arpeggiator-rate-or-direction)
@@ -19,74 +15,97 @@ missed one. Run `npm test` and `npm run build` (which type-checks) after each.
 - [Change the MIDI map](#change-the-midi-map)
 - [Persist a new piece of project state](#persist-a-new-piece-of-project-state)
 - [Add an action and a control](#add-an-action-and-a-control)
+- [Change the number of tracks](#change-the-number-of-tracks)
 
 ---
 
-## Add a macro knob to a track
+## Add or change a knob on an engine
 
-A knob is a `ControlSpec` in `engine/spec.ts`.
+A knob is a `ControlSpec` in the engine's `VoiceSpec.controls` (`engine/catalogue.ts`).
 
 ```ts
-exp("cutoff", "FILTER", BassParam.Cutoff, 60, 2500, 250, "Hz"),   // exponential taper
-lin("envmod", "ENV MOD", BassParam.EnvMod, 0, 1, 0.6),             // linear, shown as %
+exp("cutoff", "FILTER", BassParam.Cutoff, 90, 1000, 250, "Hz"),   // exponential taper
+pow("envmod", "ENV MOD", BassParam.EnvMod, 0, 1, 0.6, 1.7),        // power curve: more travel at the low end
+lin("bite", "BITE", BassParam.Bite, 0, 1, 0.5),                    // linear, shown as %
 ```
 
-1. **`spec.ts`** — add `lin(...)` or `exp(...)` to the track's `controls`. Choose a *narrow* range: the whole travel
-   should be musical. A stepped control uses the object form with `steps: [...]`.
-2. **Persisted data.** Saved `sound` arrays are indexed by control position. Adding a control **changes the length**,
-   which `valid()` rejects. Add a fix-up in `persist.ts → parseProject` that gives affected tracks their default sound
-   (the ENV MOD fix-up is the model). **Append new controls last** wherever possible.
-3. **`presets.ts`** — unspecified controls fall back to their default, so existing presets still work. Set the new value
-   in the presets where it matters.
-4. **`midi/mapping.ts`** — add the key to `SOUND_KEYS` for that track. The CC is assigned by position
-   (70–75), or by name in `SOUND_BY_KEY`. A track is limited to six knobs.
-5. UI: nothing. Panels render from `spec.controls`.
+1. **`catalogue.ts`**: add the `lin` / `exp` / `pow` row to the voice's `controls`. Choose a *narrow* range: the whole travel
+   should be musical. A stepped control uses the object form with `steps: [...]`. An engine has at most `ENGINE_KNOBS` (6).
+2. **Saved data.** Pattern slot arrays have a fixed width (`SLOT_KNOBS`), so adding a knob does **not** change their length and
+   `valid()` still passes. But an existing project holds `0` at the new position, not your default. Either **append the knob
+   last** and pick a default that is acceptable at 0, or add a fix-up in `persist.ts → normalize` that writes the default for
+   patterns where the position is untouched. Never insert a knob in the middle: every saved value after it would shift onto a
+   different control.
+3. **`midi/mapping.ts` and `params.ts`**: nothing. Both address slot knobs by position (`track.N.a.K`, CC 70, 72, 73, 75, 76, 79
+   for slot A), so the new position is already mapped.
+4. **UI**: nothing. The sound panel renders from `slotControls(voice)`. The LFO target list and TWEAK locks come from the same
+   place.
+5. A control that is not an instrument parameter sets `dest`: `"level"` for a slot's own fader, `"sample"` for a playback setting
+   read when a note triggers (such controls are skipped by locks and LFOs, see `slotWrites`).
 
-Tests: `engine.test.ts` ("keeps every default and preset inside its range") and `midi.test.ts` ("maps every sound knob of
-every track") fail if you miss steps 1, 3 or 4. A third test caps a track at **5 macro knobs (6 for the bass)**: that is a
-design guard for the macro surface, so raise it deliberately, not to make a test pass.
+Tests: `engine.test.ts` ("keeps every default inside its sweet-spot range") and `slots.test.ts` cover the catalogue, and
+`midi.test.ts` checks that all seven knobs of both slots are mapped. Another test in `engine.test.ts` keeps every engine to
+`ENGINE_KNOBS` knobs: that is a design guard for the macro surface, so raise it deliberately, not to make a test pass.
 
 ---
 
-## Add a track
+## Add an engine
 
-Tracks are rows in `TRACKS`; the rest of the app iterates it. This is the largest change, because the saved shape is
-indexed by track.
+An engine is a `VoiceSpec` plus a name in the selector.
 
-1. **`spec.ts`** — add the `TrackSpec`: `id` (must equal its index), `name`, `short`, `engine` description, `role`
-   (`drum | bass | tone`), the webdsp `kind`, `accent`, `controls`, `fixed` parameters, `gainDb`, and for melodic tracks
-   `rootMidi`, `noteLo`, `noteHi`, `defaultNote`. Optionally a `chokeGroup`.
-2. **Per-track defaults** are the `mix` field on the same `TrackSpec` (`level`, `delay`, `reverb`); there are no
-   parallel arrays to extend.
-3. **`presets.ts`** — a drum track needs an entry in every `Kit.drums` array (kits index by drum track id). A synth
-   needs a preset list and a case in `presetsFor`.
-4. **`state.ts`** — `randomizeTrack` has a density table for drums; give the new one a row. Add it to `demoPattern` if
-   you want it to sound at first start.
-5. **`midi/mapping.ts`** — a row in `SOUND_KEYS` (track count and melodic tracks come from `TRACKS`).
-6. **Persistence.** `valid()` requires `tracks.length === NUM_TRACKS`, so every existing project would be rejected.
-   Write a migration that appends a fresh track to older patterns and add a test with an old-shaped project.
-7. **Keyboard shortcuts** `1`–`9` follow `NUM_TRACKS` (`App.tsx`); there is no key for a tenth track.
-8. **Audio** — `audio.ts` builds buses and an instrument per `TRACKS` entry automatically. Check the voice limit
-   (`maxVoices` in `Groovebox.create`).
+1. **`catalogue.ts`**: add the engine id to `EngineId`, define the `VoiceSpec` (webdsp `kind`, `controls`, `fixed` parameters pinned
+   to values, `gainDb` for level balance, `pitched`, and for a pitched voice `rootMidi`, `noteLo`, `noteHi`, `defaultNote`), and add
+   it to `SINGLE`.
+2. Add `{ id, name }` to **`ENGINES`**, in the order you want the chips. The selector has room for nine names including OFF; the
+   catalogue currently offers eight. `ENGINES` also drives `normalizeRig`, so a save naming an engine not listed there falls back
+   to the starting slot.
+3. A pitched engine makes its track melodic (keyboard, arpeggiator, note range) and switches its insert to distortion. A
+   non-pitched one plays a fixed-pitch hit. `trackProfile` derives all of this; there is nothing else to register.
+4. Audio, step compile, native sequence, locks, LFOs, MIDI positions and the UI are engine-agnostic. `Groovebox.syncRig` creates
+   the instrument on the slot's bus the first time the engine is chosen.
+5. Update the counts in `test/engine.test.ts` ("keeps the catalogue to nine names…") and `test/slots.test.ts` ("offers neither PLUCK
+   nor SAW"), and the instrument tables in the user guide.
 
-`BASS_TRACK` and `TONE_TRACK` in `spec.ts` are named constants used by the demo, presets and randomiser; they are not
-part of the iteration.
+A shelved engine (PLUCK, SAW) is the worked example: see [shelved-engines.md](shelved-engines.md).
 
 ---
 
-## Add a factory kit or preset
+## Add a drum voice
 
-All in `presets.ts`, in readable units:
+DRUM is one engine with a voice selector. Add a `VoiceSpec` to `DRUM_VOICES` with a `key` of `drum:<name>`, add its name to
+`DRUM_VOICE_KEYS` (the order the selector shows), and give it a row in the `density` table in `randomizeTrack` (`state.ts`) so RND
+knows how to place it. A voice that should cut another (the hats) shares a `chokeGroup`. `normalizeSlot` accepts a saved variant
+only if it is in `DRUM_VOICE_KEYS`, so removing or renaming a voice resets those slots to a kick.
 
-```ts
-{ name: "ELECTRO", drums: [
-  { tune: 52, sweep: 2.0, decay: 0.35, punch: 0.6, drive: 0.4 },   // kick
-  ...
-]}
-```
+---
 
-A kit gives one object per drum track id (0–5); a synth preset gives one object of control keys. Missing keys use
-defaults. The test "keeps every default and preset inside its sweet-spot range" checks the values.
+## Add a factory sample
+
+Factory samples are generated in code, so the repository holds no audio and nothing needs a licence. Add a row to `FACTORY_DEFS` in
+`engine/samples.ts`: a stable `id`, a `name` and a `gen()` returning mono PCM at 44.1 kHz. Use the seeded `noise()` helper so the sample
+is the same every time. Ids are saved in projects, so never rename one. `FACTORY_SAMPLES` is built from the table; the starting rig
+refers to its samples by `DEFAULT_SAMPLES`. The test "are all distinct, audible, finite and the same every time" covers a new row.
+
+A user import is a different path: `importSample` stores the original bytes in IndexedDB under `user:<n>` and webdsp decodes them
+when a slot first uses them.
+
+---
+
+## Add a lockable parameter (and LFO target)
+
+A *lockable* parameter is one a step can override (TWEAK) and an LFO can move. The list is `LOCKS` in `engine/plock.ts`: the 14 slot
+knob positions, the two sends, the distortion, and the filter cutoff and resonance.
+
+1. **`plock.ts`**: add a `LockParam` with a **permanent** `id` (it is the key in `Step.parameterLocks` and in `Lfo.target`, so it
+   is saved), a `label`, a `target` and a `base(tp)` that reads the pattern's value. Add the target kind to `LockTarget` if it is new.
+2. **`audio.ts → lockWrites`**: add the branch that turns the value into engine writes. Use the **same keys** as the mixer or sound
+   writes use for that parameter, so a lock, an LFO and the base share caches.
+3. **`actions.ts → setLockable`** and **`params.ts`**: route the on-screen control and the parameter through `setLockable` so TWEAK mode
+   edits the step's lock instead of the base.
+4. **LFO list**: `useTargets` in `ui/LfoModal.tsx` decides which lock ids the menu offers for a track.
+5. `sanitizeLocks` and `sanitizeLfos` keep only known ids, so an id you remove silently drops from old saves; a renamed id is lost.
+
+Tests: `plock.test.ts`.
 
 ---
 
@@ -160,8 +179,8 @@ defs.push({
 - `kind` is `norm` (0..1), `int` (whole numbers, optional `labels`) or `bool`.
 - `get` reads `AppState`. `set` **must go through the same action the UI uses**, so the UI follows by itself.
 - **Ids are permanent once shipped.** They are the external contract: DAW automation lanes are bound to them.
-- If `set` changes state other than `patterns`, `mutes`, `solos`, `pattern` or `arp`, extend the early-return in
-  `onParamChange` so the change is reported.
+- If `set` changes state other than `patterns`, `plock`, `selStep`, `focus`, `mutes`, `solos`, `pattern` or `arp`, extend the
+  early-return in `onParamChange` so the change is reported.
 
 Then give it a CC in `midi/mapping.ts` (next recipe). `paramManifest()` lists it for a host automatically.
 
@@ -169,17 +188,18 @@ Then give it a CC in `midi/mapping.ts` (next recipe). `paramManifest()` lists it
 
 ## Change the MIDI map
 
-Edit `midi/mapping.ts`. It is data, and the engine validates it.
+Edit `midi/mapping.ts`. It is data, and the engine validates it. CC numbers appear nowhere else.
 
 ```ts
 parameters["track.1.volume"] = { cc: 7, channel: 1 };
-parameters["track.7.sound.cutoff"] = { cc: 74, channel: 7, invert: false };
+parameters["track.7.a.1"] = { cc: 70, channel: 7 };   // knob 1 of slot A on track 7, whatever engine is in it
 ```
 
-Pattern selection is not a CC; it is the `program` entry (Bank Select + Program Change). A mapping entry is
-`{ cc, channel?, invert?, label? }`. `channel` is 1–16 and defaults to `defaultChannel`. Unknown
-parameter ids, bad channels and doubled CCs are reported as warnings rather than failing (`compileMapping`), and the test
-"compiles against the real parameters with no warnings" keeps the shipped map clean.
+The map is built by a short loop (one channel per track, the same CCs on each) rather than written out; change `SLOT_CCS` to move
+the slot knobs. Pattern selection is not a CC; it is the `program` entry (Bank Select + Program Change). A mapping entry is
+`{ cc, channel?, invert?, label? }`. `channel` is 1–16 and defaults to `defaultChannel`. Unknown parameter ids, bad channels and
+doubled CCs are reported as warnings rather than failing (`compileMapping`), and the test "compiles against the real parameters
+with no warnings" keeps the shipped map clean. Parameter ids are listed in [MIDI](midi.md#parameter-ids).
 
 ---
 
@@ -189,7 +209,8 @@ Say you add `s.metronome`.
 
 1. `state.ts` — add to `AppState` and `initialState()`.
 2. `persist.ts` — add to `Saved` (optional, since old saves lack it), to `snapshot()`, to the `persisted` list in
-   `autosave()`, and to `parseProject`, defaulting when absent and clamping when present.
+   `autosave()`, and to `parseProject`, defaulting when absent and clamping when present. Per-pattern data goes in `normalize`
+   instead. The host snapshot (`toHostSnapshot` / `restoreFromHost`) follows the same `Saved` shape.
 3. Never make `valid()` stricter without a migration.
 
 If it is performance state (not part of the music), do not persist it; put it in `AppState` only.
@@ -207,3 +228,21 @@ If it is performance state (not part of the music), do not persist it; put it in
 5. If the change must reach the audio engine, you normally need nothing: the controller observes `patterns`, `mutes`,
    `solos` and `pattern`, and `applySound`/`applyMix` push what changed. New *kinds* of audio parameter belong in
    `audio.ts`.
+
+---
+
+## Change the number of tracks
+
+`TRACKS` in `spec.ts` has one row per track (its starting mix) and `NUM_TRACKS` is its length; the rest of the app iterates it.
+This is a large change because the saved shape is indexed by track.
+
+1. **`spec.ts`**: add the `TrackSpec` row (`id` equal to its index, and `mix`).
+2. **`catalogue.ts → defaultRig`**: give the new track its two starting slots.
+3. **`midi/mapping.ts`**: the loop covers `NUM_TRACKS` channels; MIDI has 16, so 16 tracks is the ceiling.
+4. **Persistence**: `valid()` requires `tracks.length === NUM_TRACKS`, so every existing project would be rejected. Write a
+   migration that appends a fresh track to older patterns, extend `normalizeRig`/`arp` handling, and add a test with an old-shaped
+   project.
+5. **Keyboard shortcuts** `1`–`9` follow `NUM_TRACKS` (`App.tsx`); there is no key for a tenth track.
+6. **Audio**: `audio.ts` builds the buses and slot buses per track automatically. Check the voice limit (`maxVoices` in
+   `Groovebox.create`) and webdsp's 64-bus limit: a track costs 7 buses (5 + 2 slots), and the punch bus costs 1.
+7. **Layout**: the phone and desktop CSS assume 8 rows in places (the slim mixer, the track rail); check both.

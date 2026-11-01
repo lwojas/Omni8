@@ -3,13 +3,14 @@
 // actions the UI uses. MIDI, a plugin host or automation all go through here; none of them knows
 // where a control lives on screen, and the UI knows nothing about them.
 //
-//   track.<1-8>.volume | mute | solo | delaySend | reverbSend | arp   (arp: melodic tracks)
-//   track.<7,8>.distortion                                                (synths only: ACID and FM)
-//   track.<1-8>.sound.<key>                                            (the track's macro knobs)
+//   track.<1-8>.volume | mute | solo | delaySend | reverbSend | punchSend | arp   (arp: melodic tracks)
+//   track.<1-8>.distortion                                             (the INSERT FX of a track with a synth)
+//   track.<1-8>.filterCut | filterRes | filterMode                     (the INSERT FX of the other tracks)
+//   track.<1-8>.a.<1-7> | b.<1-7>                                      (knob K of slot A or B by position: 1-6 the engine's, 7 LEVEL)
 //   pattern.select                                                     (0-based pattern slot)
 //
-// Sound knobs, the delay/reverb sends and the bass distortion are lockable (plock.ts): in P-LOCK mode, with a step selected on the focused track, they read
-// and write that step's lock rather than the base, exactly as the on-screen knobs do.
+// Slot knobs, the delay/reverb sends, the distortion and the filter cutoff/resonance are lockable (plock.ts): in TWEAK mode, with a
+// step selected on the focused track, they read and write that step's lock rather than the base, exactly as the on-screen knobs do.
 // Ids are 1-based for tracks (what a person calls them) and never change once shipped: they are the
 // external contract (see docs/dev/midi.md). Volume, sends and sound belong to the pattern on screen, as
 // they do in the UI.

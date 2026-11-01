@@ -19,14 +19,16 @@ renders or throttled in a background tab. It falls back to the main thread where
 For the step at `gridTime`:
 
 1. **Swing.** Odd steps shift later by `(swing − 0.5) × 2 × stepDur`. Swing is stored as 0.5 – 0.75.
-2. **Notes.** For each track with the step on:
-   - drums: `gb.note(track, { time, velocity: acc ? 1 : 0.7, chokeGroup })`
-   - melodic: `pitch = note − rootMidi + 12 × oct`; duration `0.62 × stepDur`, or until the start of the next step
-     (+15 ms) when the next step is a slide; `tie` when this step slides and the previous is on.
+2. **Notes.** `stepcompile.ts` makes one note per track that has the step on (`velocity` 1 for an accent, 0.7 otherwise; for a
+   melodic track, `pitch = note + 12 × oct` relative to the track's root, a duration of `0.62 × stepDur` or the step's `GATE`, or
+   until the start of the next step (+15 ms) when the next step is a slide, and `tie` when this step slides and the previous is on).
+   `slots.ts` then turns that one note into a play event per slot: an instrument note, or a trigger of the shared sample.
 3. **Arpeggiators.** `scheduleArps` asks each active arp for the notes that fall in this step window.
-4. **Written FX.** Unless a punch is being held (which wins), `scheduleLaneStep` layers every lane's punch at this
+4. **Parameter locks.** `scheduleLocks` sends the step's TWEAK locks at the step's time, and puts back anything the previous step
+   locked that this one does not.
+5. **Written FX.** Unless a punch is being held (which wins), `scheduleLaneStep` layers every lane's punch at this
    step (`layeredTarget`), sends the chain values as scheduled ramps, and applies routing at `t`.
-5. Advance `gridTime`, `step`, `stepCount`. At the pattern end, `advancePattern` decides what comes next.
+6. Advance `gridTime`, `step`, `stepCount`. At the pattern end, `advancePattern` decides what comes next.
 
 ## Per-track last step (polymeter)
 
@@ -71,6 +73,21 @@ then updates:
 attribute on the old and new step and updates the step readout and the page progress bar directly: about twenty
 attribute writes and zero React renders. The per-step position is not in the store at all. CSS animation uses
 `transform` and `opacity` only; there are no blurred shadows or filters on cells, knobs or sliders.
+
+## LFOs
+
+LFOs are not scheduled ahead. Every tick (`Controller.tick`), `Groovebox.applyLfos` reads the sounding pattern, computes each running
+LFO's offset from the audio clock (`lfoValueAt` from webdsp, free-running or locked to the beat grid's anchor and tempo) and writes
+`base + offset` to the parameters they point at. They are therefore control-rate (a 10 ms ticker) and run whether or not the
+transport is playing. They are not part of the plugin's native sequence (see [VST3 build](vst.md)).
+
+## Recording notes
+
+With REC on and the transport playing, `Controller.recordDown(track, note)` writes the note on the **nearest step boundary** to
+the audible position (`recordStep`: a key pressed in the first half of a step goes on that step, in the second half on the next),
+mapped through the track's own loop with `trackStepAt`. `recordUp` turns the time the key was held into the step's gate
+(`gateForHeld`, the nearest entry in `GATES`). The write is tagged to the pattern that was audible when the key went down, so
+recording across a pattern change lands in the right place.
 
 ## Holding a punch
 

@@ -190,3 +190,13 @@ instrument, sends to the track bus (protocol 4 bus targets). The next step write
 (a lock on a cycle's last step is undone on the loop). Where a lock lands on a beat that a per-bar state write also covers, the lock
 wins. It is the same rule as the live scheduler (`Groovebox.scheduleLocks`), and `lockWrites` builds both. When the DAW stops, the page
 forgets what the engine holds (`forgetLocks`) and re-sends the base sound.
+
+## What the native sequence does not carry yet
+
+- **Sample slots play the whole sample.** A sample event in a webdsp `Sequence` has no start, end or decay, so a SAMPLE slot's window and
+  fade are ignored in the plugin (`nativeseq.ts` fires `playSlots`' sample events as plain triggers on the slot's bus). A sample that
+  is not loaded yet is silent in the host's sequence. Loop mode and the pitch follow the notes as in the browser.
+- **LFOs do not run.** They are written from the page's controller tick (`Groovebox.applyLfos`), which does not drive the plugin's
+  native playback. A parameter an LFO points at sits at its base value, or at a step's lock. The LFO settings still save with the
+  session.
+- Both need new fields in webdsp's `Sequence` events (or a native LFO) before the plugin can match the browser.
