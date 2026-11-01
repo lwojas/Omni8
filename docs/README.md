@@ -8,7 +8,7 @@ The **[User Guide](guide/01-getting-started.md)** walks through the instrument i
 |---|---|
 | [1 · Getting started](guide/01-getting-started.md) | The machine, the screen, your first five minutes |
 | [2 · Sequencing](guide/02-sequencing.md) | Steps, notes, accent, slide, scales, the arpeggiator |
-| [3 · Sound design](guide/03-sound.md) | Kits, presets and every knob |
+| [3 · Sound design](guide/03-sound.md) | Every instrument and every knob |
 | [4 · Mixing & track FX](guide/04-mixing-and-track-fx.md) | Levels, delay and reverb sends |
 | [5 · Punch FX](guide/05-punch-fx.md) | Performing and recording effects |
 | [6 · Patterns & songs](guide/06-patterns-and-songs.md) | 64 patterns, cueing, chains |

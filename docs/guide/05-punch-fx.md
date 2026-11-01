@@ -1,26 +1,26 @@
 # Punch FX
 
-Punch FX are what make Hybrid.8 fun to perform with. There are nine effects, all sharing one effects section. Hold a pad
+Punch FX are what make Hybrid.8 fun to perform with. There are nine effects, played from a row of pads. Hold a pad
 and the effect **fades in** while you hold it; let go and it fades back out. Press **REC FX** and your move is recorded
 into the pattern, including how far the effect had built up at every step.
 
 ## The pads
 
-| Pad | Effect | Type | Main knob |
+| Pad | What you hear | How it behaves | Main knob |
 |---|---|---|---|
-| **FILTER** | A filter that closes, with resonance | takeover | DEPTH |
-| **DRIVE** | Warm, tape-style distortion | takeover | DRIVE |
-| **CRUSH** | Lo-fi crunch (bit and sample-rate reduction) | takeover | CRUSH |
-| **PHASE** | A swirling phaser | takeover | RATE (0.4 – 3 Hz) |
-| **DUB** | An echo throw | throw | TIME (`1/16` … `1/8T`) |
-| **ROLL** | A fast 1/16 repeating echo | throw | FEEDBACK |
-| **SWEEP** | A filter sweep, closing or opening | takeover | SHAPE |
-| **FLANGE** | A jet-plane flanger | takeover | RATE (0.1 – 1.2 Hz) |
-| **VERB** | A reverb throw | throw | SIZE |
+| **FILTER** | The mix closes down to a dark, muffled sound with a little ring | The whole mix goes through it | DEPTH |
+| **DRIVE** | Warm, tape-style distortion | The whole mix goes through it | DRIVE |
+| **CRUSH** | Lo-fi crunch, like an old sampler | The whole mix goes through it | CRUSH |
+| **PHASE** | A swirling, whooshing phaser | The whole mix goes through it | RATE (0.4 – 3 Hz) |
+| **DUB** | An echo thrown off the beat | The mix plays on; some of it is flung into the echo | TIME (`1/16` … `1/8T`) |
+| **ROLL** | A fast stuttering echo on 16ths | The mix plays on; some of it is flung into the echo | FEEDBACK |
+| **SWEEP** | A filter sweep, closing or opening | The whole mix goes through it | SHAPE |
+| **FLANGE** | A jet-plane flanger | The whole mix goes through it | RATE (0.1 – 1.2 Hz) |
+| **VERB** | A big room that swallows the mix | The mix plays on; some of it is flung into the room | SIZE |
 
-**Takeover** effects take over the mix. While you hold the pad, the normal sound of every track is cut and the whole mix
-plays through the effect, so nothing sneaks past it. **Throw** effects (DUB, ROLL, VERB) leave the mix playing and send
-a part of each track into the effect, so whatever is playing gets flung into an echo or a big room.
+Most pads work on **the whole mix**. While you hold one, you hear the band through the effect and nothing sneaks past it.
+The three **throw** pads (DUB, ROLL, VERB) are different: the groove carries on as normal while a part of every track is
+flung into the echo or the room, so what's playing at that moment trails off behind it.
 
 Each pad has **one main knob**, shown in the Punch FX panel for the pad you pressed last. Its setting is saved with the
 pattern. Turn it before you press the pad, or while you hold it.
@@ -38,7 +38,7 @@ SWEEP is the one pad that keeps moving while you hold it, swinging back and fort
 
 ## Fading in
 
-A held effect doesn't jump straight on. It builds from nothing to full over the **RAMP** time:
+A held effect doesn't jump straight on. It builds from nothing to full over the **RAMP** time, which is how long a move takes to reach its full effect:
 
 | Setting | Time to reach full |
 |---|---|
@@ -50,7 +50,7 @@ A held effect doesn't jump straight on. It builds from nothing to full over the 
 These times follow your tempo, so they speed up and slow down with the BPM. Use longer times for builds and NOW for
 quick stabs.
 
-When you let go of **VERB**, it keeps ringing out for about two and a half seconds so the tail isn't cut off.
+When you let go of **VERB**, the room keeps ringing out for a couple of seconds so the tail isn't cut off.
 
 ## Recording effects
 
@@ -59,7 +59,7 @@ of the pattern's **three FX lanes**. The tabs above the pads switch the sequence
 **LANE 2** and **LANE 3**, each showing only that lane. A tab has an outline when its lane has something recorded.
 
 - Each time you hold a pad, that's one take. It goes into the **first empty lane**, and all the lanes play back **together**,
-  layered on the same effects section. When all three lanes are full, the next take wipes them all and starts again in
+  layered on top of each other. When all three lanes are full, the next take wipes them all and starts again in
   lane 1.
 - Each lane can hold one effect per step. It remembers the pad and **how far the effect had built up**, and plays back the
   whole movement as a smooth fade rather than a simple on and off.
@@ -70,9 +70,9 @@ of the pattern's **three FX lanes**. The tabs above the pads switch the sequence
   wipes all three.
 - The **ON / OFF** button beside ERASE switches the recorded effects on or off without losing them. It shows the current
   state.
-- If two lanes use the same part of the effect (say FILTER and SWEEP), they compete for it and the higher lane wins.
+- If two lanes ask for the same sound at once (say FILTER and SWEEP, which both close the filter), the higher lane wins.
 
-Recorded effects line up with the steps: each effect switches on at a step, and its level moves smoothly in between.
+Recorded effects line up with the steps: each effect comes in at a step, and moves smoothly from one step to the next.
 
 ## Tips
 

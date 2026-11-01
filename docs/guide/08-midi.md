@@ -4,6 +4,8 @@ Hybrid.8 can be controlled from a MIDI controller or your music software (DAW). 
 motorised faders and displays follow along, and it can **follow an external clock** to stay in time with your other gear.
 You can also play the selected track from a MIDI keyboard.
 
+MIDI knobs and faders each send a numbered message called a **CC** (controller number). The tables below say which number does what, so you can set your controller or DAW to match. If your gear lets you "learn" a control, you can skip the numbers and just move the on-screen control while your hardware listens.
+
 MIDI needs a browser that supports it (Chrome and Edge do). The first time, the browser will ask your permission.
 
 ## Switching it on
@@ -47,8 +49,8 @@ channel 8. Every track uses the same controller numbers (CCs).
 | **20** | Mute | 0–63 off, 64–127 on |
 | **21** | Solo | 0–63 off, 64–127 on |
 | **22** | Arpeggiator | Tracks with a melodic instrument |
-| **77** | Distortion | The insert effect on a track with a synth |
-| **74** | Filter cutoff | The insert effect on other tracks |
+| **77** | Distortion | The track's distortion (tracks with a synth) |
+| **74** | Filter cutoff | The track's filter (all other tracks) |
 | **71** | Filter resonance | |
 | **78** | Filter mode | 0–63 low-pass, 64–127 high-pass |
 

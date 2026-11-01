@@ -47,7 +47,7 @@ everything is on one page. The controls are the same either way.
 | Tab | What you'll find |
 |---|---|
 | **SEQ** | The track strip, step pads, keyboard, the effects you've recorded, and the punch pads |
-| **SOUND** | The slot tabs, instrument choices, the knobs, the track's insert effect, and its delay and reverb |
+| **SOUND** | The slot tabs, instrument choices, the knobs, the track's distortion or filter, and its delay and reverb |
 | **MIX** | Level, mute and solo for all eight tracks |
 | **FX** | Each track's delay and reverb, plus the Punch FX |
 | **PTN** | Your pattern slots, copy, clear and chain |

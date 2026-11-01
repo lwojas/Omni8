@@ -16,7 +16,7 @@ slim mixer column on larger screens.
 
 Each track has its own **delay** and **reverb**, so the snare can sit in a small room while the clap rides a long echo.
 
-Set how much of each a track gets with the `DLY` and `REV` knobs on the **SOUND** panel. The delay's time and the
+Set how much of each a track gets (its "send") with the `DLY` and `REV` knobs on the **SOUND** panel. The delay's time and the
 reverb's size are on the **Track FX** panel.
 
 Below those knobs, the **PUNCH FX** button decides whether the track takes part in the [Punch FX](05-punch-fx.md). It's

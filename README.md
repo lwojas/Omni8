@@ -17,7 +17,7 @@ engine, its own workflow, its own interface.
 - **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, ACCENT button, swing, a scale-aware
   keyboard, and an arpeggiator on the melodic tracks.
 - **Punch FX.** Hold a pad and the effect sweeps in: filter, drive, crush, phaser, flanger, dub echo, roll, reverb, filter
-  sweep. Arm **REC FX** and the move, with its exact sweep shape, is recorded into the pattern and replayed on the audio clock.
+  sweep. Arm **REC FX** and the move, exactly as you played it, is recorded into the pattern and plays back in time with the beat.
 - **Proper mixing.** Level, mute and solo per track, plus an independent delay and reverb per track. Delay locks to the
   tempo or runs free.
 - **64 patterns, cueing and chains.** Switch patterns on the bar; the sound of the whole groove can change with them.
@@ -25,7 +25,7 @@ engine, its own workflow, its own interface.
 - **Everything is saved.** Autosave, named saves, and export/import as a file.
 - **MIDI.** Control every fader and knob from a controller or DAW, with feedback to motorised faders. Bank/program
   change picks patterns. Follow an external MIDI clock.
-- **Mobile first.** Five tabs on a phone. On a wide screen the whole instrument is on one page.
+- **Made for phones too.** Five tabs on a phone. On a wide screen the whole instrument is on one page.
 
 ## Start
 
@@ -70,7 +70,7 @@ plugin loads the hosted app (or a dev server, see the doc). In the DAW it follow
 | Tracks | 8, two slots each (6 engines) |
 | Patterns | 64, each 16 / 32 / 48 / 64 steps |
 | Tempo | 60 – 200 BPM, swing 50 – 75% |
-| Punch FX | 9, sweepable, writable |
+| Punch FX | 9, played by hand and recordable |
 | Track FX | Delay (free or tempo-synced) and reverb on every track |
 | Storage | Autosave and named saves in the browser; export/import as `.hybrid8.json` |
 | Control | MIDI CC, bank/program change, clock follow |
