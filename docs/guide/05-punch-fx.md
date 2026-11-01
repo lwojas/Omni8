@@ -65,7 +65,7 @@ into one of the pattern's **three FX lanes**. Tabs above the pads switch the seq
 - A pad you are holding always wins over what is written.
 - **ERASE** (hold it) clears every lane as the playhead passes over it.
 - Tap a cell of a lane to clear just that step. A lane's **CLR LANE** wipes that lane (tap twice); **CLR FX** beside REC FX wipes all three.
-- **LIVE** switches playback of the written lanes on and off without losing them.
+- The **ON / OFF** button beside ERASE switches playback of the written lanes on and off without losing them (it shows the current state).
 - Two lanes that use the same part of the chain (say FILTER and SWEEP) fight over it: the higher lane wins.
 
 FX writing is step-quantised: an effect is *selected* on a step boundary, and its level is smooth in between.

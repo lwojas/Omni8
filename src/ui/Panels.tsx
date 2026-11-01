@@ -353,8 +353,9 @@ export function WriteControls() {
       >
         ERASE
       </button>
-      <button type="button" className="btn" data-active={fxPlay} aria-pressed={fxPlay} onClick={() => setState({ fxPlay: !fxPlay })}>
-        LIVE
+      <button type="button" className="btn swap-label" data-active={fxPlay} aria-pressed={fxPlay} aria-label="Play written FX" onClick={() => setState({ fxPlay: !fxPlay })}>
+        <span data-show={fxPlay}>ON</span>
+        <span data-show={!fxPlay}>OFF</span>
       </button>
       <ConfirmButton label="CLR FX" short="CLR" className="btn" onConfirm={() => controller.clearFxAll()} />
     </div>

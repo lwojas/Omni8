@@ -20,7 +20,7 @@
   --bass: #00eeff;
   --tone: #00f0ff;
   --write: #ff9900;
-  --fx: #00ff91;
+  --fx: #d153ff;
   --acc: var(--bass);
   --ink: #121316;
   --radius: 4px;
@@ -1343,6 +1343,17 @@ select.chip.variant {
   gap: 5px;
   margin: 8px 0;
 }
+/* both labels share one grid cell, so the button is as wide as the longer one and never resizes on toggle */
+.swap-label {
+  display: inline-grid;
+  justify-items: center;
+}
+.swap-label > span {
+  grid-area: 1 / 1;
+}
+.swap-label > span[data-show="false"] {
+  visibility: hidden;
+}
 .punch-grid {
   flex: none;
   display: grid;
@@ -1419,6 +1430,7 @@ select.chip.variant {
   }
 }
 .punchbar {
+  --acc: var(--fx);
   flex: none;
   margin-top: 8px;
   padding-top: 2px;
