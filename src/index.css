@@ -1433,6 +1433,11 @@ select.chip.variant {
 .punchbar .write-controls {
   margin: 6px 0;
 }
+@media (max-width: 699px) {
+  .punchbar {
+    border-top: 0;
+  }
+}
 .punch-row {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

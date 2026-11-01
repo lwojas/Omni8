@@ -52,7 +52,7 @@ Note names follow the convention **MIDI 24 = C1**. ACID plays C1 – B3; FM and 
 
 ## Delay divisions
 
-`1/16`, `1/8`, `1/8.` (dotted eighth), `1/4`, `1/8T` (eighth-note triplet). Used by the track delay in BEAT mode and by
+`1/16`, `1/8`, `1/8.` (dotted eighth), `1/4`, `1/8T` (eighth-note triplet). Used by the track delay in SYNC mode and by
 the DUB pad.
 
 ## Velocity
@@ -78,9 +78,14 @@ Normal step: 70%. Accented step: 100%.
 | Hold | Melodic step | Place and select |
 | Double-tap | Knob, slider | Reset to default |
 | Drag | Knob, slider | Change value |
-| Two taps | CLR, CLEAR | Confirm a destructive clear |
+| Two taps | CLR TRACK, CLR PTN, … | Confirm a destructive clear |
 | Hold | Punch pad | Sweep effect in; release to go out |
 | Hold | ERASE | Clear all FX lanes as they play |
+
+## Phone labels
+
+On a narrow screen the clear buttons (CLR STEP, CLR TRACK, CLR PTN, CLR CHAIN, CLR FX, CLR LANE) all read **CLR**, and
+ACCENT / SLIDE read **ACC** / **SLD**. They do the same thing as on a wide screen.
 
 ## Troubleshooting
 

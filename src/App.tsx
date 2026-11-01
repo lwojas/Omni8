@@ -28,7 +28,7 @@ function StartGate() {
     <div className="gate">
       <div className="gate-card">
         <div className="logo big">{PRODUCT.logo[0]}<span>{PRODUCT.logo[1]}</span></div>
-        <p className="silk">TWO SOUNDS PER TRACK · SAMPLES · FX MANGLER</p>
+        <p className="silk">TWO SOUNDS PER TRACK · SAMPLES · PUNCH FX</p>
         <button type="button" className="btn play gate-btn" onClick={start} disabled={audio === "starting"} autoFocus>
           {audio === "starting" ? "STARTING…" : "▶ TAP TO START"}
         </button>

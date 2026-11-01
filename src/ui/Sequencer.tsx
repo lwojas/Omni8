@@ -18,7 +18,7 @@ import { ArpControl } from "./ArpControl";
 import { Stepper, usePress } from "./controls";
 import { Modal } from "./Modal";
 import { usePlayheadCell, usePlayheadEffect } from "./usePlayhead";
-import { useMedia, WIDE } from "./useMedia";
+import { PHONE, useMedia, WIDE } from "./useMedia";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -105,7 +105,7 @@ function FxCell({ lane, abs }: { lane: number; abs: number }) {
       data-on={id !== 0}
       data-beat={abs % 4 === 0}
       style={id ? ({ "--lvl": lvl.toFixed(2) } as CSSProperties) : undefined}
-      aria-label={id ? `FX${lane + 1}: ${name} at ${Math.round(lvl * 100)}% on step ${abs + 1}, tap to clear` : `FX${lane + 1}: no FX on step ${abs + 1}`}
+      aria-label={id ? `Lane ${lane + 1}: ${name} at ${Math.round(lvl * 100)}% on step ${abs + 1}, tap to clear` : `Lane ${lane + 1}: empty on step ${abs + 1}`}
       onClick={() => id && controller.clearFxStep(lane, abs)}
     >
       <span className="pad-num">{pad2(abs + 1)}</span>
@@ -120,12 +120,12 @@ function FxLane({ lane }: { lane: number }) {
   const page = useStore((s) => s.page);
   return (
     <div className="fx-lane">
-      <div className="fx-lane-cells" role="group" aria-label={`FX${lane + 1} steps`}>
+      <div className="fx-lane-cells" role="group" aria-label={`Lane ${lane + 1} steps`}>
         {Array.from({ length: PAGE }, (_, i) => <FxCell key={i} lane={lane} abs={page * PAGE + i} />)}
       </div>
       <div className="fx-lane-foot">
-        <span className="silk">FX{lane + 1} · TAP A STEP TO CLEAR · WRITE + HOLD A PAD TO RECORD</span>
-        <ConfirmButton label="CLR LANE" onConfirm={() => controller.clearFxLane(lane)} />
+        <span className="silk">LANE {lane + 1} · TAP A STEP TO CLEAR · REC FX + HOLD A PAD TO RECORD</span>
+        <ConfirmButton label="CLR LANE" short="CLR" onConfirm={() => controller.clearFxLane(lane)} />
       </div>
     </div>
   );
@@ -145,7 +145,7 @@ function SeqViewTabs() {
           key={i} type="button" role="tab" className="chip" data-used={(usedMask & (1 << i)) !== 0}
           aria-selected={view === i} data-active={view === i} onClick={() => setState({ seqView: i })}
         >
-          FX{i + 1}
+          LANE {i + 1}
         </button>
       ))}
     </div>
@@ -225,7 +225,7 @@ const Pad = memo(function Pad({ track, abs, on, acc, slide, selected, outside, l
       data-beat={abs % 4 === 0}
       aria-pressed={on}
       ref={playRef}
-      aria-label={`${trackProfile(getState().rig, track).name} step ${abs + 1}${on ? (note ? ` ${note}` : "") : " off"}${acc ? " accent" : ""}${slide ? " slide" : ""}${locked ? " with parameter locks" : ""}`}
+      aria-label={`${trackProfile(getState().rig, track).name} step ${abs + 1}${on ? (note ? ` ${note}` : "") : " off"}${acc ? " accent" : ""}${slide ? " slide" : ""}${locked ? " with tweaks" : ""}`}
       {...press}
     >
       <span className="pad-num">{pad2(abs + 1)}</span>
@@ -269,7 +269,7 @@ function Pads({ track }: { track: number }) {
 function GateControl({ track }: { track: number }) {
   const selStep = useStore((s) => (s.focus === track && !s.plock ? s.selStep : -1));
   const gate = useStore((s) => (s.selStep >= 0 && s.focus === track && !s.plock ? s.patterns[s.pattern].tracks[track].steps[s.selStep].gate ?? DEFAULT_GATE : -1));
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const buttons = (
@@ -301,7 +301,7 @@ function GateControl({ track }: { track: number }) {
 function TrackHeader({ track }: { track: number }) {
   const spec = useProfile(track);
   const melodic = spec.melodic;
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const plock = useStore((s) => s.plock);
   return (
     <div className="track-head" style={accentOf(spec)}>
@@ -313,8 +313,8 @@ function TrackHeader({ track }: { track: number }) {
       <div className="track-btns">
         {melodic && <GateControl track={track} />}
         {phone && (
-          <button type="button" className="btn sm plock-key" data-active={plock} aria-pressed={plock} aria-label="P-LOCK mode" title="P-LOCK: select steps to lock sound parameters" onClick={() => setPlockMode(!plock)}>
-            P
+          <button type="button" className="btn sm plock-key" data-active={plock} aria-pressed={plock} aria-label="Tweak mode" title="TWEAK: select steps to give them their own sound settings" onClick={() => setPlockMode(!plock)}>
+            TWEAK
           </button>
         )}
         <SeqMenu track={track} />
@@ -331,13 +331,13 @@ function SeqMenu({ track }: { track: number }) {
   const close = () => setOpen(false);
   return (
     <>
-      <button type="button" className="btn sm" aria-haspopup="dialog" aria-expanded={open} aria-label="Sequencer actions" title="Random, clear, last step" onClick={() => setOpen(true)}>
-        SEQ
+      <button type="button" className="btn sm" aria-haspopup="dialog" aria-expanded={open} aria-label="Track tools" title="Random, clear, last step" onClick={() => setOpen(true)}>
+        TOOLS
       </button>
-      <Modal open={open} title={`Sequence · ${trackProfile(getState().rig, track).name}`} onClose={close} className="seq-modal">
+      <Modal open={open} title={`Track · ${trackProfile(getState().rig, track).name}`} onClose={close} className="seq-modal">
         <div className="seq-menu">
           <button type="button" className="btn" onClick={() => { randomize(track); close(); }}>RND<small>Random pattern</small></button>
-          <ConfirmButton label="CLR" className="btn" onConfirm={() => { clearTrack(track); close(); }} />
+          <ConfirmButton label="CLR TRACK" short="CLR" className="btn" onConfirm={() => { clearTrack(track); close(); }} />
           <Stepper
             className="seq-last" label="LAST STEP" ariaLabel={`Last step of ${trackProfile(getState().rig, track).name}, of ${length}`} value={<>{last}<small>/{length}</small></>}
             decLabel="Earlier last step" incLabel="Later last step" decDisabled={last <= 1} incDisabled={last >= length}
@@ -349,8 +349,9 @@ function SeqMenu({ track }: { track: number }) {
   );
 }
 
-/** A destructive button that needs a second tap within two seconds. */
-export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { label: string; onConfirm: () => void; className?: string }) {
+/** A destructive button that needs a second tap within two seconds. `short` replaces the label on a phone (the full one stays its accessible name). */
+export function ConfirmButton({ label, short, onConfirm, className = "btn sm" }: { label: string; short?: string; onConfirm: () => void; className?: string }) {
+  const phone = useMedia(PHONE);
   const [armed, setArmed] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   // one pending disarm at a time, and none after unmount (a stale one would cut a later arming short)
@@ -360,6 +361,7 @@ export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { labe
       type="button"
       className={className}
       data-armed={armed}
+      aria-label={armed ? undefined : label}
       onClick={() => {
         window.clearTimeout(timer.current);
         if (armed) {
@@ -371,7 +373,7 @@ export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { labe
         }
       }}
     >
-      {armed ? "SURE?" : label}
+      {armed ? "SURE?" : phone && short ? short : label}
     </button>
   );
 }
@@ -533,25 +535,25 @@ function Keys({ track, step, scale }: { track: number; step: number; scale: Proj
 
 function StepEditor({ track }: { track: number }) {
   const spec = useProfile(track);
-  // In P-LOCK mode a selected step is only a target for locks: its note, flags and gate are not edited from here.
+  // In TWEAK mode a selected step is only a target for locks: its note, flags and gate are not edited from here.
   const plock = useStore((s) => s.plock);
   const selStep = useStore((s) => (s.focus === track && !s.plock ? s.selStep : -1));
   const step = useStore((s) => (s.selStep >= 0 && s.focus === track && !s.plock ? s.patterns[s.pattern].tracks[track].steps[s.selStep] : null));
   const scale = useStore((s) => s.scale);
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const drumSel = useStore((s) => (s.focus === track ? s.selStep : -1));
   const drumStep = useStore((s) => (s.selStep >= 0 && s.focus === track ? s.patterns[s.pattern].tracks[track].steps[s.selStep] : null));
   if (!spec.melodic) {
     return (
       <div className="step-editor hint" style={accentOf(spec)}>
         {plock ? (
-          <span className="silk">{phone ? "P-LOCK" : "P-LOCK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB"}</span>
+          <span className="silk">{phone ? "TWEAK" : "TWEAK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB"}</span>
         ) : (
           <button
             type="button" className="btn sm" disabled={!drumStep} data-active={drumStep?.acc ?? false} aria-pressed={drumStep?.acc ?? false}
             title="Shift+click a step to select it" onClick={() => toggleStepFlag(track, drumSel, "acc")}
           >
-            ACCENT
+            {phone ? "ACC" : "ACCENT"}
           </button>
         )}
       </div>
@@ -562,11 +564,11 @@ function StepEditor({ track }: { track: number }) {
       <div className="step-editor-top">
         {step ? (
           <>
-            <button type="button" className="btn sm" data-active={step.acc} aria-pressed={step.acc} onClick={() => toggleStepFlag(track, selStep, "acc")}>ACCENT</button>
-            <button type="button" className="btn sm" data-active={step.slide} aria-pressed={step.slide} onClick={() => toggleStepFlag(track, selStep, "slide")}>SLIDE</button>
+            <button type="button" className="btn sm" data-active={step.acc} aria-pressed={step.acc} onClick={() => toggleStepFlag(track, selStep, "acc")}>{phone ? "ACC" : "ACCENT"}</button>
+            <button type="button" className="btn sm" data-active={step.slide} aria-pressed={step.slide} onClick={() => toggleStepFlag(track, selStep, "slide")}>{phone ? "SLD" : "SLIDE"}</button>
           </>
         ) : (
-          (!phone || plock) && <span className="silk">{plock ? (phone ? "P-LOCK" : "P-LOCK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB") : "PLAY THE KEYS · TAP A STEP TO ENTER NOTES"}</span>
+          (!phone || plock) && <span className="silk">{plock ? (phone ? "TWEAK" : "TWEAK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB") : "PLAY THE KEYS · TAP A STEP TO ENTER NOTES"}</span>
         )}
         <span className="step-editor-tools">
           <ArpControl track={track} />

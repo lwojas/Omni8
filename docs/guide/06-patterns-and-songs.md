@@ -24,7 +24,7 @@ On a wide screen the pattern bar shows one bank of 16 at a time (1–16, 17–32
 | Button | Does |
 |---|---|
 | **COPY** | Tap COPY, then tap a slot: the current pattern is copied there, overwriting it. Tap the current slot to cancel. |
-| **CLEAR** | Empties the current pattern (tap twice). |
+| **CLR PTN** | Empties the current pattern (tap twice). |
 
 ## Chains
 
@@ -34,7 +34,7 @@ A **chain** plays patterns one after another: a song.
 2. Tap pattern slots in order. Each tap appends to the chain. A chain holds up to 64 entries and can repeat patterns.
 3. Tap **DONE**, then switch the chain **ON**.
 
-Tap an entry in the chain to remove it. **CLR** empties the chain. With the chain on, playback starts at its first
+Tap an entry in the chain to remove it. **CLR CHAIN** empties the chain. With the chain on, playback starts at its first
 entry and loops through it. Cue a pattern that is in the chain and the chain continues from that position.
 
 The chain, and whether it is on, is saved with the project.

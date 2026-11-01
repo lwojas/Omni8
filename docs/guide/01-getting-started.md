@@ -63,7 +63,7 @@ sends move to a strip under the knobs, so the keyboard stays on screen.
 - **Knobs** turn by dragging up/down or left/right. **Double-tap** returns a knob to its default. The arrow keys nudge
   a focused knob.
 - **Sliders** work the same way; double-tap resets.
-- **Destructive buttons** (CLR, CLEAR) ask you to tap twice. A stray tap never wipes a pattern.
+- **Destructive buttons** (every CLR button) ask you to tap twice. A stray tap never wipes a pattern.
 
 ## Keyboard shortcuts
 
@@ -80,7 +80,7 @@ sends move to a strip under the knobs, so the keyboard stays on screen.
 3. **Change a sound.** Select a track, open **SOUND** (or look at the band on a wide screen), tap slot **B** and pick another
    engine. Choose **SAMPLE** and tap the sample name to pick from the shared library.
 4. **Move a knob.** Select **ACID**, turn **FILTER** and **RES** while it plays.
-5. **Punch something in.** Hold **FILTER** or **SWEEP** in the punch pads. Let go. Now arm **WRITE**, hold a pad
+5. **Punch something in.** Hold **FILTER** or **SWEEP** in the punch pads. Let go. Now arm **REC FX**, hold a pad
    during the loop, and the move is recorded and replays every time round.
 6. **Save.** Name it with **SAVE**. Hybrid.8 also autosaves, so a reload picks up where you stopped.
 

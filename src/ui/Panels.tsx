@@ -16,6 +16,7 @@ import { Knob, Slider } from "./controls";
 import { LfoButton } from "./LfoModal";
 import { Modal } from "./Modal";
 import { ConfirmButton } from "./Sequencer";
+import { PHONE, useMedia } from "./useMedia";
 import { accentOf, useProfile } from "./profile";
 import { SampleModal } from "./SampleModal";
 
@@ -120,16 +121,17 @@ function FilterBar({ track, locks }: { track: number; locks: Record<string, numb
   );
 }
 
-/** P-LOCK mode toggle and CLEAR (the selected step's locks), under the instrument knobs. */
+/** TWEAK mode toggle and CLR STEP (the selected step's locks), under the instrument knobs. */
 function PlockBar({ track }: { track: number }) {
+  const phone = useMedia(PHONE);
   const on = useStore((s) => s.plock);
   const selStep = useStore((s) => s.selStep);
   const locked = useStore((s) => s.plock && s.selStep >= 0 && hasLocks(s.patterns[s.pattern].tracks[track].steps[s.selStep]));
   return (
-    <div className="plock-bar" role="group" aria-label="Parameter locks">
-      <button type="button" className="btn sm" data-active={on} aria-pressed={on} onClick={() => setPlockMode(!on)}>P-LOCK</button>
-      <button type="button" className="btn sm" disabled={!locked} aria-label="Clear the selected step's parameter locks" onClick={() => clearStepLocks(track, selStep)}>CLEAR</button>
-      {on && <span className="silk">{selStep < 0 ? "SELECT A STEP, THEN TURN A KNOB" : `STEP ${selStep + 1} · KNOBS LOCK THIS STEP ONLY`}</span>}
+    <div className="plock-bar" role="group" aria-label="Step tweaks">
+      <button type="button" className="btn sm" data-active={on} aria-pressed={on} onClick={() => setPlockMode(!on)}>TWEAK</button>
+      <button type="button" className="btn sm" disabled={!locked} aria-label="Clear the selected step's tweaks" onClick={() => clearStepLocks(track, selStep)}>{phone ? "CLR" : "CLR STEP"}</button>
+      {on && <span className="silk">{selStep < 0 ? "SELECT A STEP, THEN TURN A KNOB" : `STEP ${selStep + 1} · KNOBS TWEAK THIS STEP ONLY`}</span>}
     </div>
   );
 }
@@ -140,7 +142,7 @@ export function SoundPanel() {
   const profile = useProfile(track);
   const voice = profile.voices[slot];
   const baseSound = useStore((s) => s.patterns[s.pattern].tracks[track].slots[slot]);
-  // In P-LOCK mode the knobs show the selected step: its locks over the base. Neither is changed by looking.
+  // In TWEAK mode the knobs show the selected step: its locks over the base. Neither is changed by looking.
   const locks = useStore((s) => lockStep(s, track)?.parameterLocks);
   const plock = useStore((s) => s.plock);
   const playing = useStore((s) => s.playing);
@@ -341,7 +343,7 @@ export function WriteControls() {
   return (
     <div className="write-controls">
       <button type="button" className="btn write" data-active={write} aria-pressed={write} onClick={() => setState({ write: !write })}>
-        <span className="rec-dot" /> WRITE
+        <span className="rec-dot" /> REC FX
       </button>
       <button
         type="button" className="btn erase" data-active={erase} aria-pressed={erase}
@@ -352,9 +354,9 @@ export function WriteControls() {
         ERASE
       </button>
       <button type="button" className="btn" data-active={fxPlay} aria-pressed={fxPlay} onClick={() => setState({ fxPlay: !fxPlay })}>
-        FX ON
+        LIVE
       </button>
-      <ConfirmButton label="CLR" className="btn" onConfirm={() => controller.clearFxAll()} />
+      <ConfirmButton label="CLR FX" short="CLR" className="btn" onConfirm={() => controller.clearFxAll()} />
     </div>
   );
 }
@@ -389,8 +391,8 @@ export function ManglerPanel() {
         />
       </div>
       <div className="mangler-mid">
-        <div className="chips" role="group" aria-label="Sweep time">
-          <span className="silk">SWEEP IN</span>
+        <div className="chips" role="group" aria-label="Ramp time">
+          <span className="silk">RAMP</span>
           {SWEEPS.map((w, i) => (
             <button key={w.label} type="button" className="chip" data-active={m.sweep === i} aria-pressed={m.sweep === i} onClick={() => setSweep(i)}>{w.label}</button>
           ))}
@@ -400,7 +402,7 @@ export function ManglerPanel() {
       <div className="punch-grid" data-write={write}>
         {PUNCHES.map((p) => <PunchPad key={p.id} id={p.id} />)}
       </div>
-      <p className="hint silk">{write ? "WRITE ARMED · PLAY, THEN HOLD A PAD · THE SWEEP IS RECORDED" : "HOLD A PAD TO PERFORM · ARM WRITE TO RECORD THE SWEEP"}</p>
+      <p className="hint silk">{write ? "REC FX ARMED · PLAY, THEN HOLD A PAD · THE MOVE IS RECORDED" : "HOLD A PAD TO PERFORM · ARM REC FX TO RECORD THE MOVE"}</p>
     </div>
   );
 }
@@ -426,6 +428,7 @@ function Slot({ index }: { index: number }) {
 }
 
 function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
+  const phone = useMedia(PHONE);
   const chain = useStore((s) => s.chain);
   const chainOn = useStore((s) => s.chainOn);
   const chainEdit = useStore((s) => s.chainEdit);
@@ -435,7 +438,7 @@ function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
       <button type="button" className="btn sm" data-active={copyArm} aria-pressed={copyArm} onClick={() => setState({ copyArm: !copyArm, chainEdit: false })}>
         {copyArm ? "TAP SLOT" : "COPY"}
       </button>
-      <ConfirmButton label="CLEAR" onConfirm={clearPattern} />
+      <ConfirmButton label="CLR PTN" short="CLR" onConfirm={clearPattern} />
       {chainControls && (
         <>
           <span className="silk tools-label">CHAIN</span>
@@ -445,7 +448,7 @@ function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
           <button type="button" className="btn sm" data-active={chainOn} aria-pressed={chainOn} disabled={chain.length === 0} onClick={() => setState({ chainOn: !chainOn })}>
             {chainOn ? "ON" : "OFF"}
           </button>
-          <button type="button" className="btn sm" onClick={clearChain} disabled={chain.length === 0} aria-label="Clear chain">CLR</button>
+          <button type="button" className="btn sm" onClick={clearChain} disabled={chain.length === 0} aria-label="Clear chain">{phone ? "CLR" : "CLR CHAIN"}</button>
         </>
       )}
     </div>

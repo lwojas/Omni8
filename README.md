@@ -17,7 +17,7 @@ engine, its own workflow, its own interface.
 - **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, hold to accent, swing, a scale-aware
   keyboard, and an arpeggiator on the melodic tracks.
 - **Punch FX.** Hold a pad and the effect sweeps in: filter, drive, crush, phaser, flanger, dub echo, roll, reverb, filter
-  sweep. Arm **WRITE** and the move, with its exact sweep shape, is recorded into the pattern and replayed on the audio clock.
+  sweep. Arm **REC FX** and the move, with its exact sweep shape, is recorded into the pattern and replayed on the audio clock.
 - **Proper mixing.** Level, mute and solo per track, plus an independent delay and reverb per track. Delay locks to the
   tempo or runs free.
 - **64 patterns, cueing and chains.** Switch patterns on the bar; the sound of the whole groove can change with them.
@@ -31,7 +31,7 @@ engine, its own workflow, its own interface.
 
 1. Open Hybrid.8 and **tap START**. A demo groove is already playing.
 2. Mute a track, give slot **B** of a track a different engine or sample, turn the **ACID** filter, hold **FILTER** on the punch pads.
-3. Press **WRITE**, hold a pad through a loop, and listen to your move come back round.
+3. Press **REC FX**, hold a pad through a loop, and listen to your move come back round.
 
 The [User Guide](docs/guide/01-getting-started.md) takes it from there.
 

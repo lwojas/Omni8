@@ -1,7 +1,7 @@
 # Punch FX
 
 Punch FX are the performance heart of Hybrid.8. Nine effects live on one shared effect section. You hold a pad, the
-effect **sweeps in** while you hold it, and you let go to bring it back out. Arm **WRITE** and the move is recorded
+effect **sweeps in** while you hold it, and you let go to bring it back out. Arm **REC FX** and the move is recorded
 into the pattern, including how far the sweep had gone at every step.
 
 ## The pads
@@ -38,13 +38,13 @@ SWEEP is the one pad that keeps moving while you hold it: it swings back and for
 
 ## Sweep in
 
-A held effect does not snap on. It rises from nothing to full over the **SWEEP IN** time:
+A held effect does not snap on. It rises from nothing to full over the **RAMP** time:
 
 | Setting | Time to full |
 |---|---|
 | **NOW** | Instant |
-| **1 BT** | One beat |
-| **2 BT** | Two beats (default) |
+| **1 BEAT** | One beat |
+| **2 BEATS** | Two beats (default) |
 | **1 BAR** | One bar |
 
 The time is in beats at the project tempo, so it scales with BPM. Longer times are for builds, NOW is for stabs.
@@ -53,8 +53,8 @@ A released **VERB** keeps ringing for about two and a half seconds, so its tail 
 
 ## Writing FX
 
-Press **WRITE** (the red dot). While the transport is playing and WRITE is armed, whatever pad you hold is recorded
-into one of the pattern's **three FX lanes**. Tabs above the pads switch the sequencer between **STEPS** and **FX1**, **FX2**, **FX3**, each showing just that lane
+Press **REC FX** (the red dot). While the transport is playing and REC FX is armed, whatever pad you hold is recorded
+into one of the pattern's **three FX lanes**. Tabs above the pads switch the sequencer between **STEPS** and **LANE 1**, **LANE 2**, **LANE 3**, each showing just that lane
 (a tab is outlined when its lane holds something).
 
 - Each hold is one take. It goes into the **first empty lane**, and the lanes play back **together**, layered on the
@@ -64,15 +64,15 @@ into one of the pattern's **three FX lanes**. Tabs above the pads switch the seq
 - A pad pressed late in a step is aimed at the next step.
 - A pad you are holding always wins over what is written.
 - **ERASE** (hold it) clears every lane as the playhead passes over it.
-- Tap a cell of a lane to clear just that step. A lane's **CLR** wipes that lane (tap twice); **CLR** beside WRITE wipes all three.
-- **FX ON** switches playback of the written lanes on and off without losing them.
+- Tap a cell of a lane to clear just that step. A lane's **CLR LANE** wipes that lane (tap twice); **CLR FX** beside REC FX wipes all three.
+- **LIVE** switches playback of the written lanes on and off without losing them.
 - Two lanes that use the same part of the chain (say FILTER and SWEEP) fight over it: the higher lane wins.
 
 FX writing is step-quantised: an effect is *selected* on a step boundary, and its level is smooth in between.
 
 ## Tips
 
-- Set **SWEEP IN** to **1 BAR**, hold **FILTER** from the start of a pattern, and release on the downbeat of the next:
+- Set **RAMP** to **1 BAR**, hold **FILTER** from the start of a pattern, and release on the downbeat of the next:
   a build and a drop.
 - **ROLL** with the feedback up, held for a bar and released, turns whatever is playing into a stuttering echo.
 - Write a **DUB** throw on the last step of a pattern so it echoes into the next.
