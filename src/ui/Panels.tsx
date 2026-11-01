@@ -16,6 +16,7 @@ import { Knob, Slider } from "./controls";
 import { LfoButton } from "./LfoModal";
 import { Modal } from "./Modal";
 import { ConfirmButton } from "./Sequencer";
+import { PHONE, useMedia } from "./useMedia";
 import { accentOf, useProfile } from "./profile";
 import { SampleModal } from "./SampleModal";
 
@@ -122,13 +123,14 @@ function FilterBar({ track, locks }: { track: number; locks: Record<string, numb
 
 /** TWEAK mode toggle and CLR STEP (the selected step's locks), under the instrument knobs. */
 function PlockBar({ track }: { track: number }) {
+  const phone = useMedia(PHONE);
   const on = useStore((s) => s.plock);
   const selStep = useStore((s) => s.selStep);
   const locked = useStore((s) => s.plock && s.selStep >= 0 && hasLocks(s.patterns[s.pattern].tracks[track].steps[s.selStep]));
   return (
     <div className="plock-bar" role="group" aria-label="Step tweaks">
       <button type="button" className="btn sm" data-active={on} aria-pressed={on} onClick={() => setPlockMode(!on)}>TWEAK</button>
-      <button type="button" className="btn sm" disabled={!locked} aria-label="Clear the selected step's tweaks" onClick={() => clearStepLocks(track, selStep)}>CLR STEP</button>
+      <button type="button" className="btn sm" disabled={!locked} aria-label="Clear the selected step's tweaks" onClick={() => clearStepLocks(track, selStep)}>{phone ? "CLR" : "CLR STEP"}</button>
       {on && <span className="silk">{selStep < 0 ? "SELECT A STEP, THEN TURN A KNOB" : `STEP ${selStep + 1} · KNOBS TWEAK THIS STEP ONLY`}</span>}
     </div>
   );
@@ -354,7 +356,7 @@ export function WriteControls() {
       <button type="button" className="btn" data-active={fxPlay} aria-pressed={fxPlay} onClick={() => setState({ fxPlay: !fxPlay })}>
         LIVE
       </button>
-      <ConfirmButton label="CLR FX" className="btn" onConfirm={() => controller.clearFxAll()} />
+      <ConfirmButton label="CLR FX" short="CLR" className="btn" onConfirm={() => controller.clearFxAll()} />
     </div>
   );
 }
@@ -426,6 +428,7 @@ function Slot({ index }: { index: number }) {
 }
 
 function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
+  const phone = useMedia(PHONE);
   const chain = useStore((s) => s.chain);
   const chainOn = useStore((s) => s.chainOn);
   const chainEdit = useStore((s) => s.chainEdit);
@@ -435,7 +438,7 @@ function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
       <button type="button" className="btn sm" data-active={copyArm} aria-pressed={copyArm} onClick={() => setState({ copyArm: !copyArm, chainEdit: false })}>
         {copyArm ? "TAP SLOT" : "COPY"}
       </button>
-      <ConfirmButton label="CLR PTN" onConfirm={clearPattern} />
+      <ConfirmButton label="CLR PTN" short="CLR" onConfirm={clearPattern} />
       {chainControls && (
         <>
           <span className="silk tools-label">CHAIN</span>
@@ -445,7 +448,7 @@ function PatternTools({ chainControls = true }: { chainControls?: boolean }) {
           <button type="button" className="btn sm" data-active={chainOn} aria-pressed={chainOn} disabled={chain.length === 0} onClick={() => setState({ chainOn: !chainOn })}>
             {chainOn ? "ON" : "OFF"}
           </button>
-          <button type="button" className="btn sm" onClick={clearChain} disabled={chain.length === 0} aria-label="Clear chain">CLR CHAIN</button>
+          <button type="button" className="btn sm" onClick={clearChain} disabled={chain.length === 0} aria-label="Clear chain">{phone ? "CLR" : "CLR CHAIN"}</button>
         </>
       )}
     </div>

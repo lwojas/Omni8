@@ -18,7 +18,7 @@ import { ArpControl } from "./ArpControl";
 import { Stepper, usePress } from "./controls";
 import { Modal } from "./Modal";
 import { usePlayheadCell, usePlayheadEffect } from "./usePlayhead";
-import { useMedia, WIDE } from "./useMedia";
+import { PHONE, useMedia, WIDE } from "./useMedia";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -125,7 +125,7 @@ function FxLane({ lane }: { lane: number }) {
       </div>
       <div className="fx-lane-foot">
         <span className="silk">LANE {lane + 1} · TAP A STEP TO CLEAR · REC FX + HOLD A PAD TO RECORD</span>
-        <ConfirmButton label="CLR LANE" onConfirm={() => controller.clearFxLane(lane)} />
+        <ConfirmButton label="CLR LANE" short="CLR" onConfirm={() => controller.clearFxLane(lane)} />
       </div>
     </div>
   );
@@ -269,7 +269,7 @@ function Pads({ track }: { track: number }) {
 function GateControl({ track }: { track: number }) {
   const selStep = useStore((s) => (s.focus === track && !s.plock ? s.selStep : -1));
   const gate = useStore((s) => (s.selStep >= 0 && s.focus === track && !s.plock ? s.patterns[s.pattern].tracks[track].steps[s.selStep].gate ?? DEFAULT_GATE : -1));
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const buttons = (
@@ -301,7 +301,7 @@ function GateControl({ track }: { track: number }) {
 function TrackHeader({ track }: { track: number }) {
   const spec = useProfile(track);
   const melodic = spec.melodic;
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const plock = useStore((s) => s.plock);
   return (
     <div className="track-head" style={accentOf(spec)}>
@@ -337,7 +337,7 @@ function SeqMenu({ track }: { track: number }) {
       <Modal open={open} title={`Track · ${trackProfile(getState().rig, track).name}`} onClose={close} className="seq-modal">
         <div className="seq-menu">
           <button type="button" className="btn" onClick={() => { randomize(track); close(); }}>RND<small>Random pattern</small></button>
-          <ConfirmButton label="CLR TRACK" className="btn" onConfirm={() => { clearTrack(track); close(); }} />
+          <ConfirmButton label="CLR TRACK" short="CLR" className="btn" onConfirm={() => { clearTrack(track); close(); }} />
           <Stepper
             className="seq-last" label="LAST STEP" ariaLabel={`Last step of ${trackProfile(getState().rig, track).name}, of ${length}`} value={<>{last}<small>/{length}</small></>}
             decLabel="Earlier last step" incLabel="Later last step" decDisabled={last <= 1} incDisabled={last >= length}
@@ -349,8 +349,9 @@ function SeqMenu({ track }: { track: number }) {
   );
 }
 
-/** A destructive button that needs a second tap within two seconds. */
-export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { label: string; onConfirm: () => void; className?: string }) {
+/** A destructive button that needs a second tap within two seconds. `short` replaces the label on a phone (the full one stays its accessible name). */
+export function ConfirmButton({ label, short, onConfirm, className = "btn sm" }: { label: string; short?: string; onConfirm: () => void; className?: string }) {
+  const phone = useMedia(PHONE);
   const [armed, setArmed] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   // one pending disarm at a time, and none after unmount (a stale one would cut a later arming short)
@@ -360,6 +361,7 @@ export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { labe
       type="button"
       className={className}
       data-armed={armed}
+      aria-label={armed ? undefined : label}
       onClick={() => {
         window.clearTimeout(timer.current);
         if (armed) {
@@ -371,7 +373,7 @@ export function ConfirmButton({ label, onConfirm, className = "btn sm" }: { labe
         }
       }}
     >
-      {armed ? "SURE?" : label}
+      {armed ? "SURE?" : phone && short ? short : label}
     </button>
   );
 }
@@ -538,7 +540,7 @@ function StepEditor({ track }: { track: number }) {
   const selStep = useStore((s) => (s.focus === track && !s.plock ? s.selStep : -1));
   const step = useStore((s) => (s.selStep >= 0 && s.focus === track && !s.plock ? s.patterns[s.pattern].tracks[track].steps[s.selStep] : null));
   const scale = useStore((s) => s.scale);
-  const phone = useMedia("(max-width: 699px)");
+  const phone = useMedia(PHONE);
   const drumSel = useStore((s) => (s.focus === track ? s.selStep : -1));
   const drumStep = useStore((s) => (s.selStep >= 0 && s.focus === track ? s.patterns[s.pattern].tracks[track].steps[s.selStep] : null));
   if (!spec.melodic) {
@@ -551,7 +553,7 @@ function StepEditor({ track }: { track: number }) {
             type="button" className="btn sm" disabled={!drumStep} data-active={drumStep?.acc ?? false} aria-pressed={drumStep?.acc ?? false}
             title="Shift+click a step to select it" onClick={() => toggleStepFlag(track, drumSel, "acc")}
           >
-            ACCENT
+            {phone ? "ACC" : "ACCENT"}
           </button>
         )}
       </div>
@@ -562,8 +564,8 @@ function StepEditor({ track }: { track: number }) {
       <div className="step-editor-top">
         {step ? (
           <>
-            <button type="button" className="btn sm" data-active={step.acc} aria-pressed={step.acc} onClick={() => toggleStepFlag(track, selStep, "acc")}>ACCENT</button>
-            <button type="button" className="btn sm" data-active={step.slide} aria-pressed={step.slide} onClick={() => toggleStepFlag(track, selStep, "slide")}>SLIDE</button>
+            <button type="button" className="btn sm" data-active={step.acc} aria-pressed={step.acc} onClick={() => toggleStepFlag(track, selStep, "acc")}>{phone ? "ACC" : "ACCENT"}</button>
+            <button type="button" className="btn sm" data-active={step.slide} aria-pressed={step.slide} onClick={() => toggleStepFlag(track, selStep, "slide")}>{phone ? "SLD" : "SLIDE"}</button>
           </>
         ) : (
           (!phone || plock) && <span className="silk">{plock ? (phone ? "TWEAK" : "TWEAK · TAP A STEP TO SELECT IT, THEN TURN A SOUND KNOB") : "PLAY THE KEYS · TAP A STEP TO ENTER NOTES"}</span>

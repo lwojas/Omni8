@@ -82,6 +82,11 @@ Normal step: 70%. Accented step: 100%.
 | Hold | Punch pad | Sweep effect in; release to go out |
 | Hold | ERASE | Clear all FX lanes as they play |
 
+## Phone labels
+
+On a narrow screen the clear buttons (CLR STEP, CLR TRACK, CLR PTN, CLR CHAIN, CLR FX, CLR LANE) all read **CLR**, and
+ACCENT / SLIDE read **ACC** / **SLD**. They do the same thing as on a wide screen.
+
 ## Troubleshooting
 
 **No sound.** Tap START; browsers will not play audio before a gesture. If the start screen shows an error, the browser
