@@ -32,7 +32,7 @@ Here is how the eight tracks are set up when you start:
 | 8 | **FM+PAD** | FM | Pad |
 
 You can change any of this in **SOUND**: pick slot **A** or **B**, then pick an instrument. Tracks with a melodic
-instrument (ACID, FM or PAD) get a keyboard and an arpeggiator. Every other track gets drum pads. A sample on a melodic
+instrument (ACID, FM, PAD, PLUCK or SAW) get a keyboard and an arpeggiator. Every other track gets drum pads. A sample on a melodic
 track plays along with that track's notes.
 
 The two hats work like a real kit: an open hat is cut off when the next closed hat hits.

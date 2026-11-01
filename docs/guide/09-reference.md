@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Tracks | 8, with two slots each |
-| Instruments | 6: ACID, FM, PAD, DRUM (6 drums), PERC, SAMPLE |
+| Instruments | 4: SYNTH (ACID, FM, PAD, PLUCK, SAW), DRUM (6 drums), PERC, SAMPLE |
 | Patterns | 64 |
 | Steps per pattern | 16, 32, 48 or 64 |
 | Chain length | Up to 64 entries |

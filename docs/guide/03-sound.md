@@ -8,9 +8,9 @@ Select a track and open **SOUND** (on a larger screen, it's the instrument band 
 ## Slots and instruments
 
 A track has two slots. The **A** and **B** tabs only choose which slot you're editing; **both always play**. Under the
-tabs, the instrument buttons choose what's in that slot: **ACID**, **FM**, **PAD**, **DRUM**, **PERC**, **SAMPLE**, or
-**OFF** for an empty slot. **DRUM** adds a drum selector (kick, snare, clap, closed hat, open hat, tom), and **SAMPLE**
-shows the name of the sample.
+tabs, the instrument buttons choose what's in that slot: **SYNTH**, **DRUM**, **PERC**, **SAMPLE**, or
+**OFF** for an empty slot. **SYNTH** adds a dashed selector for the synth (ACID, FM, PAD, PLUCK or SAW), **DRUM** one for the drum (kick,
+snare, clap, closed hat, open hat, tom), and **SAMPLE** shows the name of the sample.
 
 Changing a slot's instrument puts that slot's knobs back to the new instrument's starting values, in every pattern, and
 removes any per-step tweaks for that slot. The other slot is left alone. **LEVEL** sets the slot's volume below the
@@ -20,7 +20,7 @@ track fader, so use it to balance two layers against each other.
 
 Below the knobs is one effect that belongs to the whole track. It comes before the delay and reverb:
 
-- A track with a **synth** (ACID, FM or PAD in either slot) has **DIST**, a distortion that sits between the sound and
+- A track with a **synth** (ACID, FM, PAD, PLUCK or SAW in either slot) has **DIST**, a distortion that sits between the sound and
   the fader, so the delay and reverb hear the distorted sound too. It's the same effect as the DRIVE punch, but built into
   the track. At 0 it's off, and turning it up adds grit while the volume is kept steady.
 - Any other track (drums, PERC or samples) has a **filter** with **CUT**, **RES** and an **LP / HP** switch. With LP and CUT
@@ -143,6 +143,31 @@ A warm, drifting stereo pad.
 | **SPACE** | How wide and spacious it sounds |
 | **ATTACK** | How slowly it fades in, 10 ms – 2 s |
 | **RELEASE** | How slowly it fades out, 100 ms – 3 s |
+
+## PLUCK
+
+A short, bright plucked tone with a filter that snaps shut after each note.
+
+| Knob | What it does |
+|---|---|
+| **SHAPE** | The basic character of the tone |
+| **BRIGHT** | How bright the pluck is |
+| **CUTOFF** | The filter's opening, 250 Hz – 6 kHz |
+| **RES** | How much the filter rings |
+| **SNAP** | How far the filter flicks open at the start of each note |
+| **DECAY** | 80 ms – 1 s |
+
+## SAW
+
+A thick stack of detuned saw waves, for big leads and chords.
+
+| Knob | What it does |
+|---|---|
+| **DETUNE** | How far apart the saws are tuned |
+| **SPREAD** | How wide the stack sits in the stereo field |
+| **DENSITY** | How many saws are layered |
+| **CUTOFF** | The filter's opening, 400 Hz – 9 kHz |
+| **DECAY** | 100 ms – 1.5 s |
 
 ## SAMPLE
 

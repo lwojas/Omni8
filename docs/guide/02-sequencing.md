@@ -60,7 +60,7 @@ again to stop recording. Recording is a live performance tool, so it's switched 
 | Track | Range | Default new note |
 |---|---|---|
 | ACID | C1 – B3 | C1 |
-| FM, PAD | C2 – B4 | C3 |
+| FM, PAD, PLUCK, SAW | C2 – B4 | C3 |
 
 If a track has more than one melodic instrument, it uses the range of the first one.
 
@@ -78,7 +78,7 @@ you like without breaking anything. Leave it on *Chromatic* to have every note a
 
 ## Arpeggiator
 
-Every melodic track (ACID, FM or PAD) has an arpeggiator. Hold down one or more keys and it plays them one after another
+Every melodic track (ACID, FM, PAD, PLUCK or SAW) has an arpeggiator. Hold down one or more keys and it plays them one after another
 as a pattern, in time with your tempo. It works whether or not the beat is playing.
 
 | Setting | Choices |

@@ -4,6 +4,7 @@ Recipes for the changes people actually make. Each lists every file you touch an
 missed one. Run `npm test` and `npm run build` (which type-checks) after each.
 
 - [Add or change a knob on an engine](#add-or-change-a-knob-on-an-engine)
+- [Add a synth](#add-a-synth)
 - [Add an engine](#add-an-engine)
 - [Add a drum voice](#add-a-drum-voice)
 - [Add a factory sample](#add-a-factory-sample)
@@ -49,24 +50,31 @@ Tests: `engine.test.ts` ("keeps every default inside its sweet-spot range") and 
 
 ---
 
+## Add a synth
+
+SYNTH is one engine with a voice selector (the dashed chip), like DRUM. Define the `VoiceSpec` with `engine: "synth"` and a plain
+`key` (`"acid"`), add it to `SYNTH_VOICES`, and add its key to `SYNTH_VOICE_KEYS` (the order the selector shows). Nothing else:
+no chip is added, so the UI never runs out of room. `normalizeSlot` accepts a saved variant only if it is in `SYNTH_VOICE_KEYS`
+(otherwise ACID), and a save from before SYNTH that named `acid`, `fm` or `pad` as the engine is migrated there. Add the counts to
+the instrument tables in the user guide.
+
+---
+
 ## Add an engine
 
 An engine is a `VoiceSpec` plus a name in the selector.
 
 1. **`catalogue.ts`**: add the engine id to `EngineId`, define the `VoiceSpec` (webdsp `kind`, `controls`, `fixed` parameters pinned
    to values, `gainDb` for level balance, `pitched`, and for a pitched voice `rootMidi`, `noteLo`, `noteHi`, `defaultNote`), and add
-   it to `SINGLE`.
+   it to `SINGLE`. If it is another flavour of an existing family, add a voice to SYNTH or DRUM instead (below).
 2. Add `{ id, name }` to **`ENGINES`**, in the order you want the chips. The selector has room for nine names including OFF; the
-   catalogue currently offers eight. `ENGINES` also drives `normalizeRig`, so a save naming an engine not listed there falls back
+   catalogue currently offers five. `ENGINES` also drives `normalizeRig`, so a save naming an engine not listed there falls back
    to the starting slot.
 3. A pitched engine makes its track melodic (keyboard, arpeggiator, note range) and switches its insert to distortion. A
    non-pitched one plays a fixed-pitch hit. `trackProfile` derives all of this; there is nothing else to register.
 4. Audio, step compile, native sequence, locks, LFOs, MIDI positions and the UI are engine-agnostic. `Groovebox.syncRig` creates
    the instrument on the slot's bus the first time the engine is chosen.
-5. Update the counts in `test/engine.test.ts` ("keeps the catalogue to nine names…") and `test/slots.test.ts` ("offers neither PLUCK
-   nor SAW"), and the instrument tables in the user guide.
-
-A shelved engine (PLUCK, SAW) is the worked example: see [shelved-engines.md](shelved-engines.md).
+5. Update the counts in `test/engine.test.ts` ("keeps the catalogue to a handful of names…") and `test/slots.test.ts` ("offers PLUCK and SAW"), and the instrument tables in the user guide.
 
 ---
 

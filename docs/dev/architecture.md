@@ -16,8 +16,7 @@ musically, and [webdsp](https://github.com/lwojas/webdsp) for sound. The one rul
 - Everything about a track's behaviour is **derived** from its slots, never stored: `trackProfile(rig, track)` says whether it is
   melodic (either slot is a pitched engine), which insert it has (distortion with a synth, an LP/HP filter otherwise), its note
   range, accent colour and display name.
-- Engines: `ACID`, `FM`, `PAD`, `DRUM` (a voice selector: kick, snare, clap, closed hat, open hat, tom), `PERC`, `SAMPLE`.
-  `PLUCK` and `SAW` exist in the catalogue but are shelved ([shelved-engines.md](shelved-engines.md)).
+- Engines: `SYNTH` (a voice selector: acid, fm, pad, pluck, saw), `DRUM` (a voice selector: kick, snare, clap, closed hat, open hat, tom), `PERC`, `SAMPLE`.
 - Samples are a **shared library** (`samples.ts`): a SAMPLE slot saves a library id, and the audio is loaded into webdsp once
   per id however many slots use it.
 

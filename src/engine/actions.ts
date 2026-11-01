@@ -2,7 +2,7 @@
 // audition sounds. No React here.
 import { normalizeArp, type ArpSettings } from "./arp";
 import { controller } from "./controller";
-import { defaultSlotSound, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
+import { defaultSlotSound, defaultVariant, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, SYNTH_VOICE_KEYS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
 import type { Lfo } from "./lfo";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
@@ -179,7 +179,7 @@ function replaceSlot(track: number, slot: 0 | 1, next: SlotRig, keep?: (at: numb
 export function setSlotEngine(track: number, slot: 0 | 1, engine: EngineId, sample = getState().library[0]?.id ?? ""): void {
   const cur = getState().rig[track][slot];
   if (cur.engine === engine) return;
-  replaceSlot(track, slot, { engine, variant: engine === "drum" ? "kick" : engine === "sample" ? sample : "" });
+  replaceSlot(track, slot, { engine, variant: defaultVariant(engine, sample) });
   controller.audition(track);
 }
 
@@ -188,6 +188,14 @@ export function setDrumVoice(track: number, slot: 0 | 1, variant: string): void 
   const cur = getState().rig[track][slot];
   if (cur.engine !== "drum" || cur.variant === variant || !(DRUM_VOICE_KEYS as readonly string[]).includes(variant)) return;
   replaceSlot(track, slot, { engine: "drum", variant });
+  controller.audition(track);
+}
+
+/** Choose the synth voice of a SYNTH slot (its knobs are those of the new voice). */
+export function setSynthVoice(track: number, slot: 0 | 1, variant: string): void {
+  const cur = getState().rig[track][slot];
+  if (cur.engine !== "synth" || cur.variant === variant || !(SYNTH_VOICE_KEYS as readonly string[]).includes(variant)) return;
+  replaceSlot(track, slot, { engine: "synth", variant });
   controller.audition(track);
 }
 

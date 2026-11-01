@@ -1,8 +1,8 @@
 // The two-slot model: what a track note plays, what swapping an engine changes, and what survives a save.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setDistortion, setDrumVoice, setFilter, setSlotEngine, setSlotSample, setSlotTab, setSound } from "../src/engine/actions";
+import { setDistortion, setDrumVoice, setFilter, setSlotEngine, setSlotSample, setSlotTab, setSound, setSynthVoice } from "../src/engine/actions";
 import { Groovebox } from "../src/engine/audio";
-import { defaultSlotSound, ENGINES, LEVEL_AT, normalizeRig, SAMPLE_CONTROLS, SLOT_KNOBS, trackProfile, voiceOf, type Rig } from "../src/engine/catalogue";
+import { defaultSlotSound, LEVEL_AT, normalizeRig, SAMPLE_CONTROLS, SLOT_KNOBS, SYNTH_VOICE_KEYS, trackProfile, voiceOf, type Rig } from "../src/engine/catalogue";
 import { fromHostSnapshot, toHostSnapshot } from "../src/engine/persist";
 import { FACTORY_SAMPLES, factoryPcm, wavBytes } from "../src/engine/samples";
 import { playSlots } from "../src/engine/slots";
@@ -37,7 +37,7 @@ describe("what a track note plays", () => {
   });
 
   it("keeps each engine on its own root: a note is the same note on an acid and an FM layered in one track", () => {
-    const rig: Rig = DEFAULT_RIG.map((tr, t) => (t === 5 ? [{ engine: "acid", variant: "" }, { engine: "fm", variant: "" }] as const : tr));
+    const rig: Rig = DEFAULT_RIG.map((tr, t) => (t === 5 ? [{ engine: "synth", variant: "acid" }, { engine: "synth", variant: "fm" }] as const : tr));
     const [a, b] = playSlots(rig, 5, { time: 0, velocity: 1, pitch: 0 }, sounds(rig, 5));
     // acid's root is MIDI 33 (the track's), FM's is 45: the FM sounds the same MIDI note 12 semitones lower in its own terms
     expect((a as { params: { pitch: number } }).params.pitch).toBe(0);
@@ -79,9 +79,10 @@ describe("what a track note plays", () => {
 describe("changing an engine", () => {
   it("never touches the other slot, the other tracks, or the project's steps", () => {
     const before = structuredClone(getState().patterns[0]);
-    setSlotEngine(5, 1, "pad");
+    setSlotEngine(5, 1, "synth");
+    setSynthVoice(5, 1, "pad");
     const after = getState().patterns[0];
-    expect(getState().rig[5][1].engine).toBe("pad");
+    expect(getState().rig[5][1]).toEqual({ engine: "synth", variant: "pad" });
     expect(getState().rig[5][0]).toEqual(DEFAULT_RIG[5][0]);
     expect(after.tracks[5].slots[0]).toEqual(before.tracks[5].slots[0]);
     expect(after.tracks[5].steps).toEqual(before.tracks[5].steps);
@@ -92,8 +93,9 @@ describe("changing an engine", () => {
   it("resets that slot's knobs to the new engine's defaults in every pattern, and nowhere else", () => {
     setSound(5, 1, 0, 0.9);
     getState().patterns[3].tracks[5].slots[1][0] = 0.9; // a pattern that is not on screen
-    setSlotEngine(5, 1, "fm");
-    const fm = defaultSlotSound(voiceOf({ engine: "fm", variant: "" }));
+    setSlotEngine(5, 1, "synth");
+    setSynthVoice(5, 1, "fm");
+    const fm = defaultSlotSound(voiceOf({ engine: "synth", variant: "fm" }));
     for (const p of [0, 3, 10]) expect(getState().patterns[p].tracks[5].slots[1]).toEqual(fm);
   });
 
@@ -101,13 +103,13 @@ describe("changing an engine", () => {
     const steps = tp(5).steps;
     steps[2].parameterLocks = { "slot.a.0": 0.3, "slot.b.1": 0.4, "fx.delaySend": 0.5 };
     getState().patterns[0].tracks[5].steps = steps;
-    setSlotEngine(5, 1, "saw");
+    setSlotEngine(5, 1, "perc");
     expect(tp(5).steps[2].parameterLocks).toEqual({ "slot.a.0": 0.3, "fx.delaySend": 0.5 });
   });
 
   it("follows the role: a drum track that gets a pitched engine becomes melodic and its steps take the engine's note", () => {
     expect(trackProfile(getState().rig, 2).melodic).toBe(false);
-    setSlotEngine(2, 1, "acid");
+    setSlotEngine(2, 1, "synth");
     const profile = trackProfile(getState().rig, 2);
     expect(profile.melodic).toBe(true);
     expect(tp(2).steps.every((s) => s.note === profile.defaultNote)).toBe(true);
@@ -145,8 +147,8 @@ describe("changing an engine", () => {
   });
 
   it("allows two acid tracks, and the same sample on any number of tracks", () => {
-    setSlotEngine(7, 0, "acid");
-    expect(getState().rig.filter((tr) => tr.some((s) => s.engine === "acid")).length).toBe(3);
+    setSynthVoice(7, 0, "acid");
+    expect(getState().rig.filter((tr) => tr.some((s) => s.variant === "acid")).length).toBe(3);
     setSlotSample(0, 1, "tick"); // already a SAMPLE slot: a new sample, not a new engine
     for (const t of [1, 2, 3]) setSlotEngine(t, 1, "sample", "tick");
     expect(getState().rig.filter((tr) => tr[1].engine === "sample" && tr[1].variant === "tick")).toHaveLength(4);
@@ -166,7 +168,7 @@ describe("the INSERT FX follows the slots", () => {
   it("switches the insert off and its locks away when the track changes kind", () => {
     setFilter(0, { mode: 1, cut: 0.4, res: 0.5 });
     tp(0).steps[1].parameterLocks = { "fx.filterCut": 0.2, "fx.delaySend": 0.3 };
-    setSlotEngine(0, 0, "acid");
+    setSlotEngine(0, 0, "synth");
     expect(trackProfile(getState().rig, 0).insert).toBe("dist");
     expect(tp(0).filter).toEqual({ mode: 0, cut: 1, res: 0 });
     expect(tp(0).steps[1].parameterLocks).toEqual({ "fx.delaySend": 0.3 });
@@ -186,7 +188,7 @@ describe("the INSERT FX follows the slots", () => {
   });
 });
 
-describe("one-line names and the shelved engines", () => {
+describe("one-line names and the synth voices", () => {
   it("labels the rail with short names: CH and OH for the hats, SMPL for a sample", () => {
     expect(trackProfile(DEFAULT_RIG, 2).tag).toBe("CH");
     expect(trackProfile(DEFAULT_RIG, 3).tag).toBe("OH");
@@ -195,12 +197,18 @@ describe("one-line names and the shelved engines", () => {
     for (let t = 0; t < NUM_TRACKS; t++) expect(trackProfile(DEFAULT_RIG, t).tag).not.toMatch(/\s|SAMPLE|HAT/);
   });
 
-  it("offers neither PLUCK nor SAW, keeps their voices wired, and refuses them from a save", () => {
-    expect(ENGINES.map((e) => e.id)).not.toContain("pluck");
-    expect(ENGINES.map((e) => e.id)).not.toContain("saw");
-    expect(voiceOf({ engine: "pluck", variant: "" })?.kind).toBeDefined();
-    expect(voiceOf({ engine: "saw", variant: "" })?.kind).toBeDefined();
-    expect(normalizeRig([[{ engine: "pluck", variant: "" }, { engine: "saw", variant: "" }]], DEFAULT_RIG, NUM_TRACKS)[0]).toEqual(DEFAULT_RIG[0]);
+  it("offers PLUCK and SAW as synth voices, and refuses an unknown voice from a save", () => {
+    expect(SYNTH_VOICE_KEYS).toContain("pluck");
+    expect(SYNTH_VOICE_KEYS).toContain("saw");
+    expect(voiceOf({ engine: "synth", variant: "pluck" })?.kind).toBeDefined();
+    expect(voiceOf({ engine: "synth", variant: "saw" })?.kind).toBeDefined();
+    expect(normalizeRig([[{ engine: "pluck", variant: "" }, { engine: "synth", variant: "saw" }]], DEFAULT_RIG, NUM_TRACKS)[0]).toEqual([{ engine: "synth", variant: "pluck" }, { engine: "synth", variant: "saw" }]);
+    expect(normalizeRig([[{ engine: "synth", variant: "x" }, { engine: "synth", variant: "" }]], DEFAULT_RIG, NUM_TRACKS)[0]).toEqual([{ engine: "synth", variant: "acid" }, { engine: "synth", variant: "acid" }]);
+  });
+
+  it("loads a save from before SYNTH, where the synth was the engine", () => {
+    const old = [[{ engine: "acid", variant: "" }, { engine: "fm", variant: "" }]];
+    expect(normalizeRig(old, DEFAULT_RIG, NUM_TRACKS)[0]).toEqual([{ engine: "synth", variant: "acid" }, { engine: "synth", variant: "fm" }]);
   });
 });
 
@@ -252,7 +260,7 @@ describe("the graph follows the rig", () => {
     gb.syncRig(DEFAULT_RIG);
     const all = (gb as any).inst.map((p: unknown[]) => [...p]);
     created.length = 0;
-    const rig: Rig = DEFAULT_RIG.map((tr, t) => (t === 7 ? [tr[0], { engine: "saw", variant: "" }] as const : tr));
+    const rig: Rig = DEFAULT_RIG.map((tr, t) => (t === 7 ? [tr[0], { engine: "synth", variant: "saw" }] as const : tr));
     gb.syncRig(rig);
     expect(removed).toEqual([all[7][1]]);
     expect(created).toHaveLength(1);

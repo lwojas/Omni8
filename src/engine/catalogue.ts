@@ -1,7 +1,7 @@
 // The engine catalogue and the two-slot model. Every track holds two slots; each slot holds one engine (or nothing). This is
 // the only place that knows which webdsp instrument backs an engine and which of its parameters are exposed, over what
-// sweet-spot range. Eight engines, one of them (DRUM) with a voice selector: a ninth name is deliberately left free (see
-// docs/dev/hybrid8-plan.md).
+// sweet-spot range. Four engines plus OFF; SYNTH, DRUM and SAMPLE each have a second selector for the voice they play, so
+// adding a voice never adds a chip (see docs/dev/hybrid8-plan.md).
 //
 // The rig (which engine is in which slot) is project data, not pattern data: swapping an engine creates and removes DSP nodes,
 // which must not happen at a pattern boundary mid-song. A pattern stores only each slot's knob values (`TrackPattern.slots`).
@@ -11,9 +11,9 @@ import {
 } from "webdsp";
 import { exp, FM_COLORS, lin, pow, unitsToNorm, type ControlSpec, type Role } from "./spec";
 
-export type EngineId = "off" | "acid" | "fm" | "pad" | "pluck" | "saw" | "drum" | "perc" | "sample";
+export type EngineId = "off" | "synth" | "drum" | "perc" | "sample";
 
-/** One slot of a track. `variant` is the drum voice for DRUM, the shared sample's library id for SAMPLE, otherwise "". */
+/** One slot of a track. `variant` is the synth voice for SYNTH, the drum voice for DRUM, the shared sample's library id for SAMPLE, otherwise "". */
 export interface SlotRig {
   engine: EngineId;
   variant: string;
@@ -128,7 +128,7 @@ export const DRUM_VOICE_KEYS = ["kick", "snare", "clap", "chat", "ohat", "tom"] 
 // --- the other engines ---------------------------------------------------------------------------------
 
 const ACID: VoiceSpec = voice({
-  key: "acid", engine: "acid", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--synth", pitched: true,
+  key: "acid", engine: "synth", name: "ACID", short: "ACD", desc: "ACID BASS", kind: InstrumentKind.Bass, accent: "--synth", pitched: true,
   controls: [
     // Ranges set from offline renders of the unchanged webdsp bass: above ~1 kHz the filter adds nothing at bass pitches, ENV MOD
     // saturates by ~0.5 on low notes, BITE past ~0.75 trades onset brightness and body level for onset loudness, DECAY below
@@ -150,7 +150,7 @@ const ACID: VoiceSpec = voice({
 });
 
 const FM: VoiceSpec = voice({
-  key: "fm", engine: "fm", name: "FM", short: "FM", desc: "TWO-OP FM", kind: InstrumentKind.Fm, accent: "--synth", pitched: true,
+  key: "fm", engine: "synth", name: "FM", short: "FM", desc: "TWO-OP FM", kind: InstrumentKind.Fm, accent: "--synth", pitched: true,
   controls: [
     { key: "color", label: "COLOR", param: FmParam.Ratio, lo: 0, hi: FM_COLORS.length - 1, curve: "lin", unit: "", def: 1, steps: FM_COLORS },
     lin("depth", "DEPTH", FmParam.Timbre, 0.05, 0.9, 0.35),
@@ -166,7 +166,7 @@ const FM: VoiceSpec = voice({
 });
 
 const PAD: VoiceSpec = voice({
-  key: "pad", engine: "pad", name: "PAD", short: "PAD", desc: "ENSEMBLE PAD", kind: InstrumentKind.Pad, accent: "--tone", pitched: true,
+  key: "pad", engine: "synth", name: "PAD", short: "PAD", desc: "ENSEMBLE PAD", kind: InstrumentKind.Pad, accent: "--tone", pitched: true,
   controls: [
     lin("tone", "TONE", PadParam.Tone, 0.1, 1, 0.55),
     lin("move", "MOVE", PadParam.Movement, 0, 1, 0.5),
@@ -180,7 +180,7 @@ const PAD: VoiceSpec = voice({
 });
 
 const PLUCK: VoiceSpec = voice({
-  key: "pluck", engine: "pluck", name: "PLUCK", short: "PLK", desc: "EDGE PLUCK", kind: InstrumentKind.Edge, accent: "--tone", pitched: true,
+  key: "pluck", engine: "synth", name: "PLUCK", short: "PLK", desc: "EDGE PLUCK", kind: InstrumentKind.Edge, accent: "--tone", pitched: true,
   controls: [
     lin("shape", "SHAPE", EdgeParam.Shape, 0, 1, 0.3),
     lin("bright", "BRIGHT", EdgeParam.Bright, 0.2, 1, 0.7),
@@ -197,7 +197,7 @@ const PLUCK: VoiceSpec = voice({
 });
 
 const SAW: VoiceSpec = voice({
-  key: "saw", engine: "saw", name: "SAW", short: "SAW", desc: "HYPER SAW STACK", kind: InstrumentKind.Hypersaw, accent: "--tone", pitched: true,
+  key: "saw", engine: "synth", name: "SAW", short: "SAW", desc: "HYPER SAW STACK", kind: InstrumentKind.Hypersaw, accent: "--tone", pitched: true,
   controls: [
     lin("detune", "DETUNE", HypersawParam.Detune, 2, 60, 18, "%"),
     lin("spread", "SPREAD", HypersawParam.Spread, 0, 1, 0.7),
@@ -247,14 +247,17 @@ const SAMPLE: VoiceSpec = voice({
   ],
 });
 
-const SINGLE: Readonly<Record<string, VoiceSpec>> = { acid: ACID, fm: FM, pad: PAD, pluck: PLUCK, saw: SAW, perc: PERC, sample: SAMPLE };
+/** The synth voices, behind the one SYNTH engine name (a new synth is a row here and a key in `SYNTH_VOICE_KEYS`). */
+export const SYNTH_VOICES: Readonly<Record<string, VoiceSpec>> = { acid: ACID, fm: FM, pad: PAD, pluck: PLUCK, saw: SAW };
+/** The synth voices offered, in selector order. */
+export const SYNTH_VOICE_KEYS = ["acid", "fm", "pad", "pluck", "saw"] as const;
 
-/** The engine names, in selector order (the chips under the slot tabs). OFF is the last: an empty slot.
- * PLUCK and SAW are shelved (see docs/dev/shelved-engines.md): their voices below stay wired, but they are not offered, and a save
- * that names one falls back to the starting slot. To bring one back, add its row here. */
+const SINGLE: Readonly<Record<string, VoiceSpec>> = { perc: PERC, sample: SAMPLE };
+
+/** The engine names, in selector order (the chips under the slot tabs). OFF is the last: an empty slot. SYNTH, DRUM and SAMPLE each
+ * have a second selector (the dashed chip) for the voice or sample they play, so a new voice never adds a chip here. */
 export const ENGINES: ReadonlyArray<{ id: EngineId; name: string }> = [
-  { id: "acid", name: "ACID" }, { id: "fm", name: "FM" }, { id: "pad", name: "PAD" },
-  { id: "drum", name: "DRUM" }, { id: "perc", name: "PERC" }, { id: "sample", name: "SAMPLE" },
+  { id: "synth", name: "SYNTH" }, { id: "drum", name: "DRUM" }, { id: "perc", name: "PERC" }, { id: "sample", name: "SAMPLE" },
   { id: "off", name: "OFF" },
 ];
 
@@ -262,11 +265,12 @@ export const ENGINES: ReadonlyArray<{ id: EngineId; name: string }> = [
 export function voiceOf(slot: SlotRig): VoiceSpec | undefined {
   if (slot.engine === "off") return undefined;
   if (slot.engine === "drum") return DRUM_VOICES[slot.variant] ?? DRUM_VOICES.kick;
+  if (slot.engine === "synth") return SYNTH_VOICES[slot.variant] ?? SYNTH_VOICES.acid;
   return SINGLE[slot.engine];
 }
 
 /** The variant a slot gets when its engine is chosen. `sample` is the library id a new SAMPLE slot starts on. */
-export const defaultVariant = (engine: EngineId, sample: string): string => (engine === "drum" ? "kick" : engine === "sample" ? sample : "");
+export const defaultVariant = (engine: EngineId, sample: string): string => (engine === "drum" ? "kick" : engine === "synth" ? "acid" : engine === "sample" ? sample : "");
 
 /** Every control a slot shows, in knob order: the engine's own, then LEVEL. The index of a control is its index in the slot's sound
  * array, except LEVEL, which lives at `LEVEL_AT`. (The filter and distortion are track inserts, not slot knobs.) */
@@ -329,7 +333,7 @@ export function trackProfile(rig: Rig, track: number): TrackProfile {
     const lead = voices.find((v) => v?.pitched);
     const first = voices.find((v) => v);
     p = {
-      role: !lead ? "drum" : lead.engine === "acid" ? "bass" : "tone",
+      role: !lead ? "drum" : lead.key === "acid" ? "bass" : "tone",
       melodic: !!lead,
       insert: lead ? "dist" : "filter",
       accent: (lead ?? first)?.accent ?? "--drum",
@@ -358,9 +362,9 @@ export function defaultRig(sample: { thump: string; snap: string; rim: string; s
     [s("drum", "chat"), emptySlot()],
     [s("drum", "ohat"), emptySlot()],
     [s("sample", sample.rim), s("sample", sample.shaker)],
-    [s("acid"), emptySlot()],
-    [s("acid"), s("sample", sample.snap)],
-    [s("fm"), s("pad")],
+    [s("synth", "acid"), emptySlot()],
+    [s("synth", "acid"), s("sample", sample.snap)],
+    [s("synth", "fm"), s("synth", "pad")],
   ];
 }
 
@@ -371,9 +375,13 @@ const ENGINE_IDS = new Set<string>(ENGINES.map((e) => e.id));
 /** A slot from a save, cleaned: a known engine, and a variant that means something for it (else the slot's fallback). */
 function normalizeSlot(raw: unknown, fallback: SlotRig): SlotRig {
   const x = raw as Partial<SlotRig> | null | undefined;
-  if (!x || typeof x.engine !== "string" || !ENGINE_IDS.has(x.engine)) return fallback;
+  if (!x || typeof x.engine !== "string") return fallback;
+  // saves from before SYNTH named the synth as the engine
+  if ((SYNTH_VOICE_KEYS as readonly string[]).includes(x.engine)) return { engine: "synth", variant: x.engine };
+  if (!ENGINE_IDS.has(x.engine)) return fallback;
   const engine = x.engine as EngineId;
   const variant = typeof x.variant === "string" ? x.variant.slice(0, 40) : "";
+  if (engine === "synth") return { engine, variant: (SYNTH_VOICE_KEYS as readonly string[]).includes(variant) ? variant : "acid" };
   if (engine === "drum") return { engine, variant: (DRUM_VOICE_KEYS as readonly string[]).includes(variant) ? variant : "kick" };
   if (engine === "sample") return { engine, variant: variant || (fallback.engine === "sample" ? fallback.variant : "") };
   return { engine, variant: "" };
@@ -389,4 +397,4 @@ export function normalizeRig(raw: unknown, fallback: Rig, tracks: number): Rig {
 }
 
 /** Every voice an engine can play (the drum voices count separately): what tests and tools iterate. */
-export const ALL_VOICES: readonly VoiceSpec[] = [...Object.values(DRUM_VOICES), ...Object.values(SINGLE)];
+export const ALL_VOICES: readonly VoiceSpec[] = [...Object.values(DRUM_VOICES), ...Object.values(SYNTH_VOICES), ...Object.values(SINGLE)];

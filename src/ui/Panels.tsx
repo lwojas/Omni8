@@ -1,9 +1,9 @@
 // Sound, mixer, FX mangler and pattern panels.
 import { useRef, useState, type CSSProperties } from "react";
-import { DRUM_VOICE_KEYS, DRUM_VOICES, ENGINES, defaultSlotSound, slotControls, SLOT_NAMES, type EngineId } from "../engine/catalogue";
+import { DRUM_VOICE_KEYS, DRUM_VOICES, ENGINES, SYNTH_VOICE_KEYS, SYNTH_VOICES, defaultSlotSound, slotControls, SLOT_NAMES, type EngineId } from "../engine/catalogue";
 import {
   clearChain, clearPattern, clearStepLocks, removeChainEntry, setDelay, setDrumVoice, setFilter, setLevel, setLockable, setPlockMode, setPunchParam,
-  setPunchSend, setReverb, setSlotEngine, setSlotTab, setSound, setSoundControl, setSweep, toggleMute, toggleSolo,
+  setPunchSend, setReverb, setSlotEngine, setSynthVoice, setSlotTab, setSound, setSoundControl, setSweep, toggleMute, toggleSolo,
 } from "../engine/actions";
 import { controller } from "../engine/controller";
 import { PING_PONG, PING_PONG_NOW_STEPS, punchById, PUNCHES, SWEEPS } from "../engine/mangler";
@@ -62,7 +62,7 @@ function SlotTabs({ track }: { track: number }) {
   );
 }
 
-/** The engine names (nine at most) and, for DRUM and SAMPLE, what it plays: a drum voice or a shared sample. */
+/** The engine names and, for SYNTH, DRUM and SAMPLE, what it plays: a synth or drum voice, or a shared sample. */
 function EngineChips({ track, slot }: { track: number; slot: 0 | 1 }) {
   const rig = useStore((s) => s.rig[track][slot]);
   const library = useStore((s) => s.library);
@@ -75,6 +75,11 @@ function EngineChips({ track, slot }: { track: number; slot: 0 | 1 }) {
           {e.name}
         </button>
       ))}
+      {rig.engine === "synth" && (
+        <select className="chip variant" aria-label="Synth voice" value={rig.variant} onChange={(e) => setSynthVoice(track, slot, e.target.value)}>
+          {SYNTH_VOICE_KEYS.map((k) => <option key={k} value={k}>{SYNTH_VOICES[k].name}</option>)}
+        </select>
+      )}
       {rig.engine === "drum" && (
         <select className="chip variant" aria-label="Drum voice" value={rig.variant} onChange={(e) => setDrumVoice(track, slot, e.target.value)}>
           {DRUM_VOICE_KEYS.map((k) => <option key={k} value={k}>{DRUM_VOICES[k].name}</option>)}

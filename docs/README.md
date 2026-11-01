@@ -29,6 +29,5 @@ The **developer documentation** explains how it works and how to change it.
 | [Extending](dev/extending.md) | Recipes: knobs, engines, drum voices, samples, locks and LFO targets, punch FX, scales, parameters, MIDI |
 | [VST3 build](dev/vst.md) | The optional, local-only plugin build; how the project survives closing the window; what it does not carry yet |
 | [MIDI design](dev/midi.md) | Parameter ids, origins, echo, the keyboard, the clock follower, plugin plans |
-| [Shelved engines](dev/shelved-engines.md) | PLUCK and SAW: out of the selector, still wired |
 | [Design record](dev/hybrid8-plan.md) | The original audit and plan for the two-slot model (historical) |
 | [Development](dev/development.md) | Setup, tests, invariants, deployment, known limits |

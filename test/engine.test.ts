@@ -26,7 +26,7 @@ describe("control mapping", () => {
       for (const x of sound) expect(x >= 0 && x <= 1).toBe(true);
     }
   });
-  it("keeps the catalogue to nine names and the knobs to what a slot has room for", () => {
+  it("keeps the catalogue to a handful of names and the knobs to what a slot has room for", () => {
     expect(ENGINES.length).toBeLessThanOrEqual(9);
     expect(new Set(ENGINES.map((e) => e.id)).size).toBe(ENGINES.length);
     for (const v of ALL_VOICES) expect(v.controls.length).toBeLessThanOrEqual(ENGINE_KNOBS);
@@ -34,7 +34,7 @@ describe("control mapping", () => {
   it("starts with eight tracks, two acid tracks, and layered slots", () => {
     expect(TRACKS).toHaveLength(8);
     expect(DEFAULT_RIG).toHaveLength(8);
-    expect(DEFAULT_RIG.filter((tr) => tr.some((sl) => sl.engine === "acid"))).toHaveLength(2);
+    expect(DEFAULT_RIG.filter((tr) => tr.some((sl) => sl.variant === "acid"))).toHaveLength(2);
     expect(DEFAULT_RIG.filter((tr) => tr[0].engine !== "off" && tr[1].engine !== "off").length).toBeGreaterThanOrEqual(3);
     expect(defaultRig(DEFAULT_SAMPLES)).toEqual(DEFAULT_RIG);
   });

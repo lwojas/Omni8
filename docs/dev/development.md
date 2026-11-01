@@ -42,7 +42,7 @@ Ten files under `test/`, Vitest, Node environment, no audio, no DOM (199 tests).
 | File | Covers |
 |---|---|
 | `engine.test.ts` | Control maths (normalised ↔ units, defaults and presets inside range), the catalogue limits, Punch FX (transparent at rest, takeover rules, sweep level), sends, the randomiser (in range, in scale), scales, the arpeggiator |
-| `slots.test.ts` | The two-slot model: one note firing both slots; swapping an engine leaves the other slot, other tracks and the steps alone; knob resets and lock drops; role changes; the insert following the track kind; the shelved engines; instrument creation per slot (against a fake runtime); rig round-trip and repair; the factory samples and WAV encoding |
+| `slots.test.ts` | The two-slot model: one note firing both slots; swapping an engine leaves the other slot, other tracks and the steps alone; knob resets and lock drops; role changes; the insert following the track kind; the synth voices; instrument creation per slot (against a fake runtime); rig round-trip and repair; the factory samples and WAV encoding |
 | `plock.test.ts` | Parameter locks: resolution over the base, sanitising, the scheduled writes, sends and MIDI-mapped knobs in TWEAK mode |
 | `distortion.test.ts` | The distortion insert's mapping, locks and ids |
 | `laststep.test.ts` | Per-track last step: polymeter loops, swing, arps, locks, chains |
@@ -109,7 +109,7 @@ A failing test or type error stops the deploy. The `--base` is the repository na
 ## Related documents
 
 - [Architecture](architecture.md) · [Audio graph](audio-graph.md) · [Timing](timing.md) · [State](state-and-persistence.md)
-  · [Extending](extending.md) · [MIDI](midi.md) · [VST3 build](vst.md) · [Shelved engines](shelved-engines.md)
+  · [Extending](extending.md) · [MIDI](midi.md) · [VST3 build](vst.md)
   · [Design record](hybrid8-plan.md)
 - `concept/DESIGN/` — the visual design tokens and reference mock-up.
 - webdsp's own `ARCHITECTURE.md` and `docs/` — the engine Hybrid.8 is built on.

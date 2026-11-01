@@ -125,7 +125,7 @@ A JSON file `{ app, version: 1, name, project }` named `<name>.hybrid8.json`. Un
 Every load path (autosave, named save, import) goes through `parseProject`:
 
 1. Bounds-check the container (1–64 patterns), build the `rig` with `normalizeRig` (an unknown engine, an unusable drum voice or
-   a missing sample falls back to that slot's starting value, and a shelved engine falls back too), and pad short arrays with
+   a missing sample falls back to that slot's starting value, and an unknown synth voice becomes ACID), and pad short arrays with
    fresh patterns.
 2. `normalize` each pattern: fill missing `dly`/`rev`, clean `lfos` (`sanitizeLfos`), default `punch` to true, clamp `filter`,
    `dist` and every slot value to 0..1, drop an out-of-range `last`, and rebuild `mangler` if its `param` array is missing.

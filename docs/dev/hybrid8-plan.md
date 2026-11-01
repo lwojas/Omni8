@@ -6,7 +6,7 @@
 >
 > - **Built as planned:** the `rig`, per-slot buses, the engine catalogue (`catalogue.ts`), the shared sample library (`samples.ts`),
 >   slot tabs, engine chips and the sample modal.
-> - **Different from the plan:** PLUCK and SAW are shelved ([shelved-engines.md](shelved-engines.md)); there is no per-slot FILTER knob
+> - **Different from the plan:** PLUCK and SAW are SYNTH voices rather than engine chips; there is no per-slot FILTER knob
 >   (the INSERT FX is distortion on a track with a synth and an LP/HP filter on any other); a slot has `SLOT_KNOBS` = 7 positions, six
 >   engine knobs then LEVEL; parameter ids are `track.N.a.K` / `track.N.b.K` as planned; rail labels are one line (CH, OH, SMPL).
 > - **Added later, not in the plan:** per-track LFOs (`lfo.ts`), realtime note recording (`record.ts`), TWEAK (parameter locks) renamed
