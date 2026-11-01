@@ -1240,11 +1240,19 @@ select.chip.variant {
   align-items: center;
   gap: 6px;
 }
-.filter-bar .slider {
-  height: 32px;
-}
+/* pill-shaped, so the faders read as different from the square buttons around them */
+.filter-bar .slider,
 .dist-bar .slider {
   height: 32px;
+  border-radius: 999px;
+}
+.filter-bar .slider-label,
+.dist-bar .slider-label {
+  left: 14px;
+}
+.filter-bar .slider-value,
+.dist-bar .slider-value {
+  right: 14px;
 }
 
 /* ---- track FX (delay + reverb sends) ---------------------------------------------------------- */
@@ -2006,10 +2014,10 @@ select.chip.variant {
     letter-spacing: 0.04em;
   }
   .filter-bar .slider-label {
-    left: 5px;
+    left: 10px;
   }
   .filter-bar .slider-value {
-    right: 5px;
+    right: 10px;
   }
   .dist-bar {
     margin-top: 16px;
@@ -2023,10 +2031,10 @@ select.chip.variant {
     letter-spacing: 0.04em;
   }
   .dist-bar .slider-label {
-    left: 5px;
+    left: 10px;
   }
   .dist-bar .slider-value {
-    right: 5px;
+    right: 10px;
   }
   .sends {
     grid-area: sends;
