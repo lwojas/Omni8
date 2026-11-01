@@ -5,6 +5,7 @@ import { PRODUCT } from "../product";
 import { controller } from "../engine/controller";
 import { deleteSave, exportProject, hasHostFiles, importProject, importProjectFromHost, listSaves, loadSaved, saveProject, type SavedProject } from "../engine/persist";
 import { refreshKeys } from "../engine/keyhl";
+import { RESAMPLE_BARS } from "../engine/resample";
 import { ROOT_NAMES, SCALES, SCALE_PRESETS, withPreset, withRoot, withScale } from "../engine/scale";
 import { saveKeyHighlight } from "../engine/state";
 import { getState, setState, useStore } from "../engine/store";
@@ -79,6 +80,35 @@ function MidiGroup() {
           <p className="modal-note">Keyboard plays the selected track. Out-of-range notes are skipped; use KEY OCTAVE to shift.</p>
         </>
       )}
+    </section>
+  );
+}
+
+const RESAMPLE_STATUS = { armed: "Waiting for the next pattern start…", recording: "Recording…", saving: "Saving…" } as const;
+
+function ResampleGroup() {
+  const [bars, setBars] = useState<number>(4);
+  const status = useStore((s) => s.resample);
+  const msg = useStore((s) => s.resampleMsg);
+  const bpm = useStore((s) => s.bpm);
+  const busy = status === "armed" || status === "recording" || status === "saving";
+  const ok = (n: number) => controller.canResample(n);
+  void bpm; // the longest bar count that fits depends on the tempo
+  return (
+    <section className="menu-group" aria-label="Resample">
+      <span className="silk">RESAMPLE</span>
+      <div className="menu-row resample-row">
+        <div className="menu-field">
+          <label className="silk" htmlFor="resample-bars">LENGTH</label>
+          <select id="resample-bars" className="modal-input modal-select" value={bars} disabled={busy} onChange={(e) => setBars(Number(e.target.value))}>
+            {RESAMPLE_BARS.map((n) => <option key={n} value={n} disabled={!ok(n)}>{n} {n === 1 ? "bar" : "bars"}</option>)}
+          </select>
+        </div>
+        <button type="button" className="btn" data-active={busy} disabled={!controller.ready || busy} onClick={() => controller.resample(bars)}>RESAMPLE</button>
+      </div>
+      {busy && <p className="modal-note">{RESAMPLE_STATUS[status]}</p>}
+      {!busy && msg && <p className={status === "error" ? "modal-note err" : "modal-note"} role={status === "error" ? "alert" : "status"}>{msg}</p>}
+      <p className="modal-note">Records the master output from the next pattern start, for the bars chosen, into the sample library. Playback starts if it is stopped. Keep the tempo steady while it records.</p>
     </section>
   );
 }
@@ -198,6 +228,7 @@ export function ProjectMenu() {
               <button type="button" className="btn" onClick={() => open("load")}>{LOAD_ICON} LOAD</button>
             </div>
           </section>
+          <ResampleGroup />
           <section className="menu-group" aria-label="Key and scale">
             <span className="silk">KEY &amp; SCALE</span>
             <div className="menu-field">

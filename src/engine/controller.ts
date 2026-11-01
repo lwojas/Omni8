@@ -8,7 +8,9 @@ import { laneLayers, layeredTarget, sweepLevel, VERB_ID, VERB_TAIL, type PunchLa
 import { editPattern, getState, observe, setState } from "./store";
 import { trackProfile } from "./catalogue";
 import { NUM_TRACKS } from "./spec";
-import { MAX_CHAIN, pickWriteLane, trackStepAt, type Pattern } from "./state";
+import { encodeWav, resampleName, resampleSeconds } from "./resample";
+import { importSample } from "./samples";
+import { MAX_CHAIN, PAGE, pickWriteLane, trackStepAt, type Pattern } from "./state";
 import { StepCompiler, type StepNote } from "./stepcompile";
 import { clearLit, flashKey, setLit } from "./keyhl";
 import { setAudible } from "./playhead";
@@ -73,6 +75,10 @@ class Controller {
    * started by the first held key. -1 = not running. */
   private arpFreeTime = -1;
   private arpFreeStep = 0;
+
+  // resample (menu): armed until the next pattern start, then recording; `rsRun` tells a stale recording from the current one
+  private rsBars = 0;
+  private rsRun = 0;
 
   /** The plugin host's transport and native playback, when this host can play Hybrid.8 itself (see hostplay.ts). */
   private host: HostPlayback | null = null;
@@ -178,6 +184,7 @@ class Controller {
     if (!gb || this.host?.playing) return; // the DAW's transport is not ours to stop
     gb.silence();
     gb.clearPending();
+    this.cancelResample("Resample cancelled: playback stopped.");
     this.realignArps();
     this.events = [];
     this.punchScheduled = -1;
@@ -197,11 +204,71 @@ class Controller {
     else this.play();
   }
 
+  // --- resample ----------------------------------------------------------------------------------
+
+  /** Record `bars` bars of the master output into the sample library, starting on the next pattern's first step (playback starts if it is
+   * stopped). What is heard is what is recorded, live punches and keys included. */
+  resample(bars: number): void {
+    const gb = this.gb;
+    const st = getState();
+    if (!gb || st.resample === "armed" || st.resample === "recording" || st.resample === "saving") return;
+    const fail = (resampleMsg: string) => setState({ resample: "error", resampleMsg });
+    if (this.host?.playing) return fail("The plugin host is playing the song; resampling needs Hybrid.8 to play it.");
+    const seconds = resampleSeconds(bars, st.bpm);
+    const cap = gb.runtime.getCapabilities().maxCaptureSeconds;
+    if (seconds > cap) return fail(`${bars} bars at ${st.bpm} BPM is ${seconds.toFixed(1)}s; the most that can be recorded is ${Math.floor(cap)}s.`);
+    this.rsBars = bars;
+    setState({ resample: "armed", resampleMsg: "" });
+    if (!st.playing) this.play();
+  }
+
+  /** Whether `bars` bars fit in one recording at the current tempo. */
+  canResample(bars: number): boolean {
+    const cap = this.gb?.runtime.getCapabilities().maxCaptureSeconds ?? 0;
+    return resampleSeconds(bars, getState().bpm) <= cap;
+  }
+
+  /** The scheduler reached a pattern's first step at `time`: arm the engine's capture for exactly the bars asked. */
+  private startResample(time: number, stepDur: number): void {
+    const gb = this.gb!;
+    const bars = this.rsBars;
+    this.rsBars = 0;
+    const run = ++this.rsRun;
+    try {
+      const { result } = gb.runtime.armCapture({ startTime: time, stopTime: time + bars * PAGE * stepDur });
+      setState({ resample: "recording", resampleMsg: "" });
+      result.then(
+        async ({ metadata, channelData }) => {
+          if (run !== this.rsRun) return; // cancelled meanwhile
+          setState({ resample: "saving" });
+          const name = resampleName(getState().library.map((x) => x.name));
+          const info = await importSample(name, encodeWav(channelData.map((b) => new Float32Array(b)), metadata.sampleRate), getState().library);
+          setState((s) => ({ library: [...s.library, info], resample: "done", resampleMsg: `Saved as ${info.name}. Pick it from any sample slot.` }));
+          void gb.ensureSample(info.id);
+        },
+      ).catch((e: unknown) => {
+        if (run === this.rsRun) setState({ resample: "error", resampleMsg: e instanceof Error ? e.message : "The resample could not be saved." });
+      });
+    } catch (e) {
+      setState({ resample: "error", resampleMsg: e instanceof Error ? e.message : "The resample could not start." });
+    }
+  }
+
+  /** Abandon an armed or running resample. A recording the engine already has runs to its end; its audio is simply dropped. */
+  private cancelResample(msg: string): void {
+    const st = getState();
+    if (st.resample !== "armed" && st.resample !== "recording") return;
+    this.rsBars = 0;
+    this.rsRun++;
+    setState({ resample: "error", resampleMsg: msg });
+  }
+
   // --- plugin host playback (the DAW plays the song; see hostplay.ts) ----------------------------
 
   /** The DAW started (or jumped). A transport the page was running on its own gives way: the host's sequence plays from here. */
   private hostBegin(): void {
     const gb = this.gb!;
+    this.cancelResample("Resample cancelled: the host took over playback.");
     if (getState().playing) {
       gb.silence();
       gb.clearPending();
@@ -484,6 +551,7 @@ class Controller {
     if (next.arp !== prev.arp) {
       next.arp.forEach((a, t) => { if (!a.on && prev.arp[t].on) this.compiler.forget(t); });
     }
+    if (next.bpm !== prev.bpm && next.resample === "recording") this.cancelResample("Resample discarded: the tempo changed while recording.");
     if (next.bpm !== prev.bpm && next.playing && !this.host?.playing) this.gb.setTempo(next.bpm, this.gridTime, this.gridTime);
     if (next.fxPlay !== prev.fxPlay && next.punch === 0) {
       this.applyLayers(this.writtenLayersNow());
@@ -596,6 +664,7 @@ class Controller {
     const stepDur = 15 / st.bpm;
     const swingOff = (st.swing - 0.5) * 2 * stepDur;
     const t = this.gridTime + (step % 2 === 1 ? swingOff : 0);
+    if (this.rsBars && step === 0) this.startResample(this.gridTime, stepDur);
 
     // parameter locks first: they land before the notes of the same block
     const run = this.run;

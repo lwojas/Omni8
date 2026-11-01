@@ -2579,6 +2579,13 @@ select.chip.variant {
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
+.menu-row.resample-row {
+  align-items: end;
+}
+.resample-row > .btn {
+  height: 38px;
+  min-height: 0;
+}
 .menu-field {
   display: flex;
   flex-direction: column;

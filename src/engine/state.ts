@@ -172,6 +172,10 @@ export interface AppState {
   audio: "off" | "starting" | "ready" | "error";
   audioError: string;
   playing: boolean;
+  /** Resample progress (menu): waiting for the next pattern start, recording, or storing the result. Not saved. */
+  resample: "idle" | "armed" | "recording" | "saving" | "done" | "error";
+  /** What to tell the player once a resample is done or has failed. */
+  resampleMsg: string;
   /** The DAW's tempo while a plugin host plays the song (the project's own tempo is not used then); null otherwise. */
   hostBpm: number | null;
   playPattern: number;
@@ -376,6 +380,8 @@ export function initialState(): AppState {
     audio: "off",
     audioError: "",
     playing: false,
+    resample: "idle",
+    resampleMsg: "",
     hostBpm: null,
     playPattern: 0,
     chainPos: 0,
