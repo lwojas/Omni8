@@ -33,6 +33,8 @@ export interface VoiceSpec {
   engine: Exclude<EngineId, "off">;
   name: string;
   short: string;
+  /** The rail's one-line label for this voice when it differs from `name` ("SMPL" for SAMPLE). */
+  tag?: string;
   /** Short description of the machine under the hood, shown in the sound panel. */
   desc: string;
   /** The webdsp instrument; absent for a sample (a shared sample voice, not an instrument). */
@@ -92,7 +94,7 @@ export const DRUM_VOICES: Readonly<Record<string, VoiceSpec>> = {
     ],
   }),
   chat: voice({
-    key: "drum:chat", engine: "drum", name: "CH", short: "CH", desc: "METAL HAT · CLOSED", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
+    key: "drum:chat", engine: "drum", name: "C.HAT", tag: "CH", short: "CH", desc: "METAL HAT · CLOSED", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
     controls: [
       lin("tune", "PITCH", HiHatParam.Tune, -6, 6, 0, "st"),
       exp("decay", "DECAY", HiHatParam.Decay, 0.02, 0.18, 0.06, "s"),
@@ -101,7 +103,7 @@ export const DRUM_VOICES: Readonly<Record<string, VoiceSpec>> = {
     ],
   }),
   ohat: voice({
-    key: "drum:ohat", engine: "drum", name: "OH", short: "OH", desc: "METAL HAT · OPEN", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
+    key: "drum:ohat", engine: "drum", name: "O.HAT", tag: "OH", short: "OH", desc: "METAL HAT · OPEN", kind: InstrumentKind.HiHat, accent: "--drum", gainDb: -5, chokeGroup: 1,
     controls: [
       lin("tune", "PITCH", HiHatParam.Tune, -6, 6, 0, "st"),
       exp("decay", "DECAY", HiHatParam.Decay, 0.2, 1.1, 0.45, "s"),
@@ -236,7 +238,7 @@ export const SAMPLE_CONTROLS = {
 } as const;
 export const SAMPLE_MODES = ["ONE-SHOT", "LOOP"] as const;
 const SAMPLE: VoiceSpec = voice({
-  key: "sample", engine: "sample", name: "SMPL", short: "SMP", desc: "SHARED SAMPLE", accent: "--drum", gainDb: 0,
+  key: "sample", engine: "sample", name: "SAMPLE", tag: "SMPL", short: "SMP", desc: "SHARED SAMPLE", accent: "--drum", gainDb: 0,
   controls: [
     { key: "mode", label: "PLAY", param: -1, dest: "sample", lo: 0, hi: 1, curve: "lin", unit: "", def: 0, steps: SAMPLE_MODES },
     { key: "start", label: "START", param: -1, dest: "sample", lo: 0, hi: 1, curve: "lin", unit: "%", def: 0 },
@@ -333,7 +335,7 @@ export function trackProfile(rig: Rig, track: number): TrackProfile {
       accent: (lead ?? first)?.accent ?? "--drum",
       name: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.name).join(" + ") || "EMPTY",
       short: first?.short ?? "---",
-      tag: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.name).join("+") || "---",
+      tag: voices.filter((v): v is VoiceSpec => !!v).map((v) => v.tag ?? v.name).join("+") || "---",
       desc: first?.desc ?? "EMPTY",
       voices,
       lead,

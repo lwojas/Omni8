@@ -29,9 +29,9 @@ it plays on dry. It is separate from the delay and reverb sends, saved per patte
 | Mode | Time |
 |---|---|
 | **FREE** | A time in milliseconds, 40 – 900 ms on an exponential taper |
-| **BEAT** | A division of the project tempo: `1/16`, `1/8`, `1/8.`, `1/4`, `1/8T` |
+| **SYNC** | A division of the project tempo: `1/16`, `1/8`, `1/8.`, `1/4`, `1/8T` |
 
-BEAT mode follows the tempo, including tempo changes and an external MIDI clock. FREE stays at a fixed time. Feedback
+SYNC mode follows the tempo, including tempo changes and an external MIDI clock. FREE stays at a fixed time. Feedback
 and tone are fixed to values that suit the material, so a delay always sits in the mix.
 
 ### Reverb

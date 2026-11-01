@@ -85,9 +85,9 @@ Open the full panel with the arpeggiator button on a melodic track. Settings are
 
 | Button | Does |
 |---|---|
-| **SEQ** | Opens the track's sequencer menu: **RND**, **CLR** and **LAST STEP**. |
+| **TOOLS** | Opens the track's tools menu: **RND**, **CLR TRACK** and **LAST STEP**. |
 | **RND** | Writes a fresh pattern for the selected track. Drums get a density map per instrument; melodic tracks get notes from the project scale, with accents and slides. |
-| **CLR** | Clears the selected track's steps in this pattern (confirm with a second tap). |
+| **CLR TRACK** | Clears the selected track's steps in this pattern (confirm with a second tap). |
 | **LAST STEP** | Where the selected track loops back to step 1, counted over all the bars (27 means step 27 of 32, whichever bar you are on). Each track has its own, and a shorter track keeps looping through the pattern's repeats, so tracks of different lengths drift against each other (polymeter) while sharing one clock. Steps past it stay (dimmed) and play again when it is raised. Changing the pattern length (page buttons, **LEN**) resets every track's last step to the new length. In a chain each pattern starts its tracks afresh; the loops only carry on while one pattern repeats. |
 | **GATE** | Melodic tracks: note length of the selected step. |
 
@@ -95,15 +95,15 @@ Selecting a track in the rail plays it once when stopped. Mute and solo live in 
 
 Next: [Sound design](03-sound.md).
 
-## Parameter locks (P-LOCK)
+## Step tweaks (TWEAK)
 
-The sound knobs hold the track's **base** sound. P-LOCK lets single steps deviate from it.
+The sound knobs hold the track's **base** sound. TWEAK lets single steps deviate from it.
 
-1. Press **P-LOCK** (under the sound knobs). Tapping a step now only *selects* it, empty steps included. Nothing is added or removed.
+1. Press **TWEAK** (under the sound knobs). Tapping a step now only *selects* it, empty steps included. Nothing is added or removed.
 2. Turn a sound knob: only that parameter is locked, on the selected step. The knob turns pink and the step gets a pink dot. The knobs show the selected step's values (its locks over the base).
-3. Select another step and repeat. **CLEAR** removes the selected step's locks; the step itself and the base sound are untouched.
-4. Press **P-LOCK** again to leave. Locks stay; the knobs edit the base again, which moves every step that has no lock for that parameter.
+3. Select another step and repeat. **CLR STEP** removes the selected step's tweaks; the step itself and the base sound are untouched.
+4. Press **TWEAK** again to leave. Locks stay; the knobs edit the base again, which moves every step that has no lock for that parameter.
 
-The DLY and REV sends lock the same way as the sound knobs. On a phone, the **P** key next to GATE in the sequencer toggles P-LOCK without leaving the sequencer.
+The DLY and REV sends lock the same way as the sound knobs. On a phone, the **TWEAK** key next to GATE in the sequencer toggles TWEAK mode without leaving the sequencer.
 
-MIDI-mapped knobs follow the screen: in P-LOCK mode, with a step selected on the focused track, a mapped sound knob or send writes that step's lock (and reports the step's value); a knob of another track still edits its base. Locks play in the VST3 build too, baked into its native sequence. Volume, mute, solo and the arp are not lockable.
+MIDI-mapped knobs follow the screen: in TWEAK mode, with a step selected on the focused track, a mapped sound knob or send writes that step's lock (and reports the step's value); a knob of another track still edits its base. Locks play in the VST3 build too, baked into its native sequence. Volume, mute, solo and the arp are not lockable.

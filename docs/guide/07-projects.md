@@ -7,7 +7,7 @@ Reload, close the tab, come back tomorrow: you are where you stopped. Autosave l
 it is private to that browser on that device.
 
 Saved: all 64 patterns, the chain, tempo, swing, key and scale, arpeggiator settings. Not saved: mute, solo,
-WRITE/ERASE arming, the current screen, and other performance state.
+REC FX/ERASE arming, the current screen, and other performance state.
 
 ## Named saves
 
