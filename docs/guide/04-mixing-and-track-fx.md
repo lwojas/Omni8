@@ -29,10 +29,10 @@ each pattern, and can be controlled from MIDI.
 | Mode | Time |
 |---|---|
 | **FREE** | Any time from 40 to 900 milliseconds |
-| **SYNC** | A note length at your tempo: `1/16`, `1/8`, `1/8.`, `1/4`, `1/8T` |
+| **SYNC** | A note length at your tempo: `1/16T`, `1/16`, `1/8T`, `1/8`, `1/4T`, `1/8.`, `1/4`, `1/2T`, `1/4.`, `1/2` (T is a triplet, a dot is dotted), shortest first |
 
 SYNC follows the tempo, including tempo changes and an external MIDI clock. FREE stays at the same time whatever the
-tempo. The feedback and tone are set for you so the delay always sits well in the mix.
+tempo. The feedback and tone are set for you so the delay always sits well in the mix. **LONG**, next to the mode, lengthens the tail so the echoes ring on for many repeats (it fades; it does not build up).
 
 ### Reverb
 

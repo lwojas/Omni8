@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setDistortion, setDrumVoice, setFilter, setSlotEngine, setSlotSample, setSlotTab, setSound, setSynthVoice } from "../src/engine/actions";
 import { Groovebox } from "../src/engine/audio";
+import { ChordBanks } from "../src/engine/chord";
 import { defaultSlotSound, LEVEL_AT, normalizeRig, SAMPLE_CONTROLS, SLOT_KNOBS, SYNTH_VOICE_KEYS, trackProfile, voiceOf, type Rig } from "../src/engine/catalogue";
 import { fromHostSnapshot, toHostSnapshot } from "../src/engine/persist";
 import { FACTORY_SAMPLES, factoryPcm, wavBytes } from "../src/engine/samples";
@@ -230,6 +231,8 @@ describe("the graph follows the rig", () => {
       cancelScheduled: vi.fn(),
     };
     gb.inst = Array.from({ length: NUM_TRACKS }, () => [undefined, undefined]);
+    gb.pool = Array.from({ length: NUM_TRACKS }, () => [[], []]);
+    gb.chordBanks = new ChordBanks();
     gb.slotBus = Array.from({ length: NUM_TRACKS }, (_, t) => [1000 + t * 2, 1001 + t * 2]);
     gb.applied = Array.from({ length: NUM_TRACKS }, () => ["", ""]);
     gb.soundCache = new Map();

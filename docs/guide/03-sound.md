@@ -9,7 +9,7 @@ Select a track and open **SOUND** (on a larger screen, it's the instrument band 
 
 A track has two slots. The **A** and **B** tabs only choose which slot you're editing; **both always play**. Under the
 tabs, the instrument buttons choose what's in that slot: **SYNTH**, **DRUM**, **PERC**, **SAMPLE**, or
-**OFF** for an empty slot. **SYNTH** adds a dashed selector for the synth (ACID, FM, PAD, PLUCK or SAW), **DRUM** one for the drum (kick,
+**OFF** for an empty slot. **SYNTH** adds a dashed selector for the synth (ACID, FM, PAD, PLUCK, SAW or CHORD), **DRUM** one for the drum (kick,
 snare, clap, closed hat, open hat, tom), and **SAMPLE** shows the name of the sample.
 
 Changing a slot's instrument puts that slot's knobs back to the new instrument's starting values, in every pattern, and
@@ -20,7 +20,7 @@ track fader, so use it to balance two layers against each other.
 
 Below the knobs is one effect that belongs to the whole track. It comes before the delay and reverb:
 
-- A track with a **synth** (ACID, FM, PAD, PLUCK or SAW in either slot) has **DIST**, a distortion that sits between the sound and
+- A track with a **synth** (ACID, FM, PAD, PLUCK, SAW or CHORD in either slot) has **DIST**, a distortion that sits between the sound and
   the fader, so the delay and reverb hear the distorted sound too. It's the same effect as the DRIVE punch, but built into
   the track. At 0 it's off, and turning it up adds grit while the volume is kept steady.
 - Any other track (drums, PERC or samples) has a **filter** with **CUT**, **RES** and an **LP / HP** switch. With LP and CUT
@@ -168,6 +168,24 @@ A thick stack of detuned saw waves, for big leads and chords.
 | **DENSITY** | How many saws are layered |
 | **CUTOFF** | The filter's opening, 400 Hz – 9 kHz |
 | **DECAY** | 100 ms – 1.5 s |
+
+## CHORD
+
+A chord instrument for dub techno stabs and pads. Each step plays **one note**; CHORD turns it into a whole chord, so you
+sequence the root movement (say C, Ab, Eb, Bb) and the harmony follows. The chords are open voicings with the root lowest and
+the colour notes (7ths, 9ths) above, so they stay clear instead of muddy.
+
+| Knob | What it does |
+|---|---|
+| **TYPE** | The chord: m7, m9, m11, m(add9), minor, maj7, maj9, dom7, major, 7sus4, sus2, dim7, 7#9 |
+| **VOICE** | How it is spread, for any chord: **OPEN** (root, 5th and 7th low, the third above), **CLOSE**, **WIDE**, **SHELL** (no root: third, 7th and colour, to sit over a bass), **HIGH** (an octave up) or **INVERT** (third in the bass) |
+| **CUTOFF** | The filter's opening, 180 Hz – 5 kHz. Each note opens it briefly, then it settles |
+| **RES** | How much the filter rings |
+| **ATTACK** | 2 ms – 250 ms: a stab at the short end, a swell at the long end |
+| **RELEASE** | 50 ms – 2 s: how long the chord rings after the step's gate ends |
+
+Short gate and short release is a stab; long gate, slow attack and long release is a pad. TYPE and VOICE are read when the note plays, so it
+has no step lock or LFO. A chord uses up to five voices, and two chords can ring over each other.
 
 ## SAMPLE
 

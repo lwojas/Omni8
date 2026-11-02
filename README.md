@@ -11,7 +11,7 @@ engine, its own workflow, its own interface.
 
 ## What you get
 
-- **Eight tracks, two slots each.** Pick an engine per slot: **SYNTH** (ACID bass with accent and slide, **FM**, **PAD**, **PLUCK** or **SAW**), **DRUM** (kick,
+- **Eight tracks, two slots each.** Pick an engine per slot: **SYNTH** (ACID bass with accent and slide, **FM**, **PAD**, **PLUCK**, **SAW** or **CHORD**), **DRUM** (kick,
   snare, clap, hats, tom), **PERC** or a **SAMPLE** from a library shared by every track. Each has a handful of macro knobs tuned so
   the whole travel sounds good, and each track an INSERT FX: distortion for synths, an LP/HP filter for the rest.
 - **A sequencer that gets out of the way.** 16 to 64 steps per pattern, tap to place, ACCENT button, swing, a scale-aware

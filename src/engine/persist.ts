@@ -9,7 +9,7 @@ import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newPattern, NUM
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { newLfos, sanitizeLfos } from "./lfo";
-import { filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
+import { BEAT_DIVISIONS, filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
 import { normalizeScale, type ProjectScale } from "./scale";
 import { CURRENT_STORE, idbRequest, openDb, SAVES_STORE, txDone } from "./db";
 import { getState, observe, setState } from "./store";
@@ -52,6 +52,8 @@ function normalize(p: Pattern): void {
   if (!p || !Array.isArray(p.tracks)) return;
   p.tracks.forEach((t, i) => {
     if (!t.dly) t.dly = newDelay(i);
+    t.dly.div = Number.isFinite(t.dly.div) ? Math.max(0, Math.min(BEAT_DIVISIONS.length - 1, Math.round(t.dly.div))) : 1;
+    t.dly.fb = t.dly.fb ? 1 : 0;
     if (!t.rev) t.rev = newReverb(i);
     t.lfos = sanitizeLfos(t.lfos);
     if (typeof t.punch !== "boolean") t.punch = true;

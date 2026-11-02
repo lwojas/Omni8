@@ -268,3 +268,20 @@ describe("arpeggiator", () => {
     expect(n.gate).toBeGreaterThan(0);
   });
 });
+
+describe("delay sync times and long feedback", () => {
+  it("offers triplets and longer times, and keeps the original five where saved patterns expect them", async () => {
+    const { BEAT_DIVISIONS, BEAT_ORDER, beatPosition, delayFeedback, newDelay } = await import("../src/engine/trackfx");
+    expect(BEAT_DIVISIONS.slice(0, 5).map((d) => d.label)).toEqual(["1/16", "1/8", "1/8.", "1/4", "1/8T"]);
+    expect(BEAT_DIVISIONS.map((d) => d.label)).toEqual(expect.arrayContaining(["1/16T", "1/4T", "1/4.", "1/2T", "1/2"]));
+    // the knob walks them shortest first, each exactly once
+    expect([...BEAT_ORDER].sort((a, b) => a - b)).toEqual(BEAT_DIVISIONS.map((_, i) => i));
+    expect(BEAT_ORDER.map((i) => BEAT_DIVISIONS[i].label)).toEqual(["1/16T", "1/16", "1/8T", "1/8", "1/4T", "1/8.", "1/4", "1/2T", "1/4.", "1/2"]);
+    expect(BEAT_DIVISIONS[BEAT_ORDER[beatPosition(3)]].label).toBe("1/4");
+    const d = newDelay(0);
+    expect(delayFeedback({ ...d, fb: 1 })).toBeGreaterThan(delayFeedback(d));
+    expect(delayFeedback({ ...d, fb: 1, mode: 0 })).toBeGreaterThan(delayFeedback({ ...d, mode: 0 }));
+    expect(delayFeedback({ ...d, fb: 1 })).toBeLessThan(0.9);
+    expect(delayFeedback({ ...d, fb: undefined })).toBe(delayFeedback(d)); // an older save has no switch
+  });
+});

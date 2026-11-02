@@ -23,11 +23,14 @@ export interface ControlSpec {
   /** Stepped control: detent names, `lo..hi` is `0..names.length-1`. */
   steps?: readonly string[];
   /** Where the control lands. Absent: a webdsp instrument parameter (`param`). The others are handled by the audio layer:
-   * the slot's own fader (on its bus), and a sample's playback settings (read when a note triggers). */
-  dest?: "level" | "sample";
+   * the slot's own fader (on its bus), and settings read when a note triggers: a sample's playback ("sample") and a chord's type ("note"). */
+  dest?: "level" | "sample" | "note";
   /** Readout shown at the top of the travel instead of the number (a sample's DECAY reads FULL: no fade, the sample plays out). */
   top?: string;
 }
+
+/** A control read when a note triggers: it has a base value only, no step locks or LFO, and writes nothing to the engine. */
+export const readAtTrigger = (c: ControlSpec): boolean => c.dest === "sample" || c.dest === "note";
 
 /** What a track is fixed to: its starting mix. Everything about the sound (engines, controls, role, note range) comes from the
  * track's slots (catalogue.ts), which the project can change. */

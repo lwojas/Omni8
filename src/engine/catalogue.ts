@@ -9,6 +9,7 @@ import {
   BassParam, ClapParam, EdgeParam, FmParam, HiHatParam, HypersawParam, InstrumentKind, KickParam, PadParam, PercSynthParam,
   SnareParam, TomParam,
 } from "webdsp";
+import { CHORD_LABELS, VOICING_LABELS } from "./chord";
 import { exp, FM_COLORS, lin, pow, unitsToNorm, type ControlSpec, type Role } from "./spec";
 
 export type EngineId = "off" | "synth" | "drum" | "perc" | "sample";
@@ -49,6 +50,8 @@ export interface VoiceSpec {
   /** Source gain trim in dB, for level balance between machines. */
   gainDb: number;
   chokeGroup?: number;
+  /** One note plays a chord: the slot owns a pool of instances of `kind` and `playSlots` sends one note per chord tone (chord.ts). */
+  chord?: boolean;
   /** Pitched voices: MIDI note of the instrument's `tune` (note pitch = note - rootMidi), playable range and a new step's note. */
   rootMidi?: number;
   noteLo?: number;
@@ -209,6 +212,27 @@ const SAW: VoiceSpec = voice({
   gainDb: -8, rootMidi: 45, noteLo: 36, noteHi: 71, defaultNote: 48,
 });
 
+// Dub techno chords. Hypersaw has no resonance (its filter Q is fixed) and Pad has no filter, so neither could carry the CUTOFF and RES
+// controls; Edge has a resonant 24 dB low-pass, a filter envelope, a detuned second oscillator and an attack and release. A saw with a
+// little detune, a filter envelope that opens on the onset and settles (the stab), and a held amp envelope whose length is the step's gate.
+const CHORD: VoiceSpec = voice({
+  key: "chord", engine: "synth", name: "CHORD", short: "CHD", desc: "DUB CHORD STAB", kind: InstrumentKind.Edge, accent: "--tone", pitched: true, chord: true,
+  controls: [
+    { key: "type", label: "TYPE", param: -1, dest: "note", lo: 0, hi: CHORD_LABELS.length - 1, curve: "lin", unit: "", def: 0, steps: CHORD_LABELS },
+    exp("cutoff", "CUTOFF", EdgeParam.Cutoff, 180, 5000, 900, "Hz"),
+    lin("reso", "RES", EdgeParam.Resonance, 0.05, 0.75, 0.3),
+    exp("attack", "ATTACK", EdgeParam.Attack, 0.002, 0.25, 0.01, "s"),
+    exp("release", "RELEASE", EdgeParam.Release, 0.05, 2, 0.5, "s"),
+    { key: "voicing", label: "VOICE", param: -1, dest: "note", lo: 0, hi: VOICING_LABELS.length - 1, curve: "lin", unit: "", def: 0, steps: VOICING_LABELS },
+  ],
+  fixed: [
+    [EdgeParam.Tune, 110], [EdgeParam.Shape, 0.2], [EdgeParam.Bright, 0.55], [EdgeParam.BrightEnv, 0.35], [EdgeParam.Detune, 10],
+    [EdgeParam.PitchEnv, 0], [EdgeParam.Routing, 0], [EdgeParam.FilterA, 1], [EdgeParam.FilterEnv, 0.3], [EdgeParam.ToneDecay, 0.4],
+    [EdgeParam.Decay, 1.2], [EdgeParam.Sustain, 0.75],
+  ],
+  gainDb: -10, rootMidi: 45, noteLo: 36, noteHi: 59, defaultNote: 48,
+});
+
 const PERC: VoiceSpec = voice({
   key: "perc", engine: "perc", name: "PERC", short: "PRC", desc: "PERCUSSION SYNTH", kind: InstrumentKind.PercSynth, accent: "--drum",
   controls: [
@@ -248,9 +272,9 @@ const SAMPLE: VoiceSpec = voice({
 });
 
 /** The synth voices, behind the one SYNTH engine name (a new synth is a row here and a key in `SYNTH_VOICE_KEYS`). */
-export const SYNTH_VOICES: Readonly<Record<string, VoiceSpec>> = { acid: ACID, fm: FM, pad: PAD, pluck: PLUCK, saw: SAW };
+export const SYNTH_VOICES: Readonly<Record<string, VoiceSpec>> = { acid: ACID, fm: FM, pad: PAD, pluck: PLUCK, saw: SAW, chord: CHORD };
 /** The synth voices offered, in selector order. */
-export const SYNTH_VOICE_KEYS = ["acid", "fm", "pad", "pluck", "saw"] as const;
+export const SYNTH_VOICE_KEYS = ["acid", "fm", "pad", "pluck", "saw", "chord"] as const;
 
 const SINGLE: Readonly<Record<string, VoiceSpec>> = { perc: PERC, sample: SAMPLE };
 

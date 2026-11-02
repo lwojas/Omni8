@@ -1291,7 +1291,17 @@ select.chip.variant {
   display: flex;
   gap: 3px;
 }
-.seg .chip {
+/* the delay's buttons sit under its knob; the reverb keeps an empty row of the same height, so the two knobs line up */
+.tfx-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  margin-top: 4px;
+}
+.seg .chip,
+.tfx-btns .chip {
   min-height: 26px;
   padding: 0 10px;
   font-size: 10px;
@@ -2079,7 +2089,11 @@ select.chip.variant {
   }
   .tfx-knobs {
     --ks: 44px;
-    margin: auto 0;
+    margin: 2px 0 0;
+  }
+  .tfx-btns {
+    margin-top: auto;
+    padding-top: 4px;
   }
   .tfx-head {
     min-height: 24px;
@@ -2089,7 +2103,8 @@ select.chip.variant {
   .trackfx .panel-title .silk {
     display: none;
   }
-  .seg .chip {
+  .seg .chip,
+  .tfx-btns .chip {
     min-height: 22px;
     padding: 0 5px;
     font-size: 9px;
@@ -2282,6 +2297,14 @@ select.chip.variant {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 2px 6px;
+  }
+  .tfx-btns {
+    flex-basis: 100%;
+    min-height: 22px;
+    margin-top: 0;
+  }
+  .tfx-btns:empty {
+    display: none;
   }
   .tfx-head {
     flex-direction: column;

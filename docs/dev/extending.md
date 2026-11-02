@@ -58,6 +58,14 @@ no chip is added, so the UI never runs out of room. `normalizeSlot` accepts a sa
 (otherwise ACID), and a save from before SYNTH that named `acid`, `fm` or `pad` as the engine is migrated there. Add the counts to
 the instrument tables in the user guide.
 
+**A voice that plays several notes (CHORD).** Set `chord: true` on the `VoiceSpec`. The chord data and voicing rule are in `chord.ts`
+(edit `CHORDS` for chord qualities and `VOICINGS` for how each role is spread across octaves; every voicing applies to every chord). `playSlots` sends one instrument play per tone (`tone` = its index),
+and `Groovebox.setSlot` builds a pool of `CHORD_INSTANCES` instances (two banks of five) on the slot bus, because a webdsp instrument
+is monophonic. `note()` and the host sequence (`noteEvents`) alternate banks per chord so the previous chord's release rings on; the
+tones end by the note's `duration`, so there is no note-off bookkeeping. Knob writes carry `also` and reach every instance
+(`writeTargets`). The pool shrinks near webdsp's 64-instrument limit. A stepped control read at trigger time (the chord TYPE) uses
+`dest: "note"`.
+
 ---
 
 ## Add an engine

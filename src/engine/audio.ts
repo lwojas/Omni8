@@ -19,6 +19,7 @@ import {
   EffectKind,
   FilterMode,
   InstrumentCommonParam,
+  MAX_INSTRUMENTS,
   NodeParam,
   type BusId,
   type EffectId,
@@ -29,16 +30,20 @@ import {
 } from "webdsp";
 import { defaultWorkletUrl } from "webdsp/worklet-url";
 import { baseValues, MANGLER_KEYS, MANGLER_PARAMS, type FxSlot, type ManglerValues } from "./mangler";
+import { CHORD_INSTANCES, chordInstance, ChordBanks } from "./chord";
 import { lfoOffset } from "./lfo";
 import { lockParam, lockParams, type LockParam } from "./plock";
 import { controlAt, LEVEL_AT, trackProfile, voiceOf, type Rig, type VoiceSpec } from "./catalogue";
 import { sampleBytes } from "./samples";
 import { playSlots, type SlotPlay, type SlotSounds, type TrackNote } from "./slots";
-import { normToUnits, NUM_TRACKS } from "./spec";
+import { normToUnits, NUM_TRACKS, readAtTrigger } from "./spec";
 import { trackStepAt, type Pattern } from "./state";
 import {
-  BEAT_DIVISIONS, DELAY_FEEDBACK_BEAT, DELAY_FEEDBACK_FREE, DELAY_TONE, distDriveDb, distMix, distTrimDb, filterHz, filterQ, freeDelaySeconds, reverbDamping, reverbDecay,
+  BEAT_DIVISIONS, DELAY_TONE, delayFeedback, distDriveDb, distMix, distTrimDb, filterHz, filterQ, freeDelaySeconds, reverbDamping, reverbDecay,
 } from "./trackfx";
+
+/** webdsp's instrument limit (mirrors its `MAX_INSTRUMENTS`) and the few left free for the host's keyboard route and the like. */
+const RESERVED_INSTRUMENTS = 2;
 
 /** Work that has to land at a point on the audio clock but is not a sample-accurate event
  * (bus levels and sends are not schedulable in webdsp). Fired from the shared ticker. */
@@ -85,6 +90,8 @@ export interface GraphIds {
   slotBus: ReadonlyArray<readonly [BusId, BusId]>;
   /** Per track and slot: the engine's instrument, undefined for an empty slot or a sample. Changes when an engine is swapped. */
   inst: Array<[InstrumentId | undefined, InstrumentId | undefined]>;
+  /** Per track and slot: every instance of a CHORD slot's pool (the first is `inst`), empty for any other engine. */
+  pool?: Array<[InstrumentId[], InstrumentId[]]>;
   manglerBus: BusId;
   fx: Readonly<Record<FxSlot, EffectId>>;
 }
@@ -93,7 +100,10 @@ export interface GraphIds {
 export type Write =
   | { kind: "bus"; key: string; bus: BusId; param: NodeParam; value: number }
   | { kind: "fx"; key: string; bus: BusId; effect: EffectId; param: NodeParam; value: number }
-  | { kind: "inst"; key: string; instrument: InstrumentId; param: number; value: number };
+  | { kind: "inst"; key: string; instrument: InstrumentId; param: number; value: number; also?: readonly InstrumentId[] };
+
+/** The instruments a write reaches: a CHORD slot's knob moves every instance of its pool (`also` lists those after the first). */
+export const writeTargets = (w: Extract<Write, { kind: "inst" }>): InstrumentId[] => (w.also?.length ? [w.instrument, ...w.also] : [w.instrument]);
 
 /** The mixer's bus writes for a pattern's levels and sends, the mutes and solos, and the punch section's state
  * (`takeover`, `boost`). "pattern" is what travels with the pattern (fader/mute, delay and reverb sends); "punch" is the
@@ -137,10 +147,10 @@ export function trackFxWrites(ids: GraphIds, pattern: Pattern, clamp: (param: nu
     if (beat) {
       const div = BEAT_DIVISIONS[Math.min(BEAT_DIVISIONS.length - 1, Math.max(0, dly.div))].value;
       fx(bus, dub, "dubDiv", NodeParam.DubDelayDivision, div);
-      fx(bus, dub, "dubFb", NodeParam.DubDelayFeedback, DELAY_FEEDBACK_BEAT);
+      fx(bus, dub, "dubFb", NodeParam.DubDelayFeedback, delayFeedback(dly));
     } else {
       fx(bus, free, "freeTime", NodeParam.DelayTime, freeDelaySeconds(dly.time));
-      fx(bus, free, "freeFb", NodeParam.DelayFeedback, DELAY_FEEDBACK_FREE);
+      fx(bus, free, "freeFb", NodeParam.DelayFeedback, delayFeedback(dly));
     }
     fx(ids.reverbBus[t], ids.reverbFx[t], "decay", NodeParam.ReverbDecay, reverbDecay(rev.size));
     fx(ids.reverbBus[t], ids.reverbFx[t], "damp", NodeParam.ReverbDamping, reverbDamping(rev.size));
@@ -174,8 +184,9 @@ function slotWrites(ids: GraphIds, track: number, slot: 0 | 1, voice: VoiceSpec 
   const key = `${track}:${slot}:${at}`;
   if (c.dest === "level") return [{ kind: "bus", key, bus: ids.slotBus[track][slot], param: NodeParam.BusGain, value: levelToGain(value) }];
   const instrument = ids.inst[track][slot];
-  if (c.dest === "sample" || instrument === undefined) return [];
-  return [{ kind: "inst", key, instrument, param: c.param, value: normToUnits(c, value) }];
+  if (readAtTrigger(c) || instrument === undefined) return [];
+  const pool = ids.pool?.[track][slot];
+  return [{ kind: "inst", key, instrument, param: c.param, value: normToUnits(c, value), ...(pool && pool.length > 1 ? { also: pool.slice(1) } : {}) }];
 }
 
 /** The engine writes that put parameter `p` of `track` at normalised `value` (one for most parameters; the distortion moves three
@@ -229,6 +240,10 @@ export class Groovebox {
   private readonly slotBus: Array<[BusId, BusId]> = [];
   private readonly filterFx: EffectId[] = [];
   private readonly inst: Array<[InstrumentId | undefined, InstrumentId | undefined]> = [];
+  /** A CHORD slot's instances (`inst` is the first): one note plays several tones, and an instrument is monophonic. */
+  private readonly pool: Array<[InstrumentId[], InstrumentId[]]> = [];
+  /** Which bank of its pool each CHORD slot plays its next chord on. */
+  private readonly chordBanks = new ChordBanks();
   private readonly manglerBus: BusId;
   private readonly fx = {} as Record<FxSlot, EffectId>;
   private readonly effectRange = new Map<number, { min: number; max: number }>();
@@ -326,12 +341,13 @@ export class Groovebox {
       }
       this.slotBus.push([sb[0], sb[1]]);
       this.inst.push([undefined, undefined]);
+      this.pool.push([[], []]);
       this.applied.push(["", ""]);
     }
     this.ids = {
       trackBus: this.trackBus, busB: this.busB, busC: this.busC, delayBus: this.delayBus, reverbBus: this.reverbBus,
       delayFx: this.delayFx, reverbFx: this.reverbFx, distFx: this.distFx, filterFx: this.filterFx, slotBus: this.slotBus,
-      inst: this.inst, manglerBus: this.manglerBus, fx: this.fx,
+      inst: this.inst, pool: this.pool, manglerBus: this.manglerBus, fx: this.fx,
     };
     this.applyManglerValues(baseValues());
     this.syncRig(rig);
@@ -393,19 +409,40 @@ export class Groovebox {
   private setSlot(track: number, slot: 0 | 1, v: VoiceSpec | undefined): void {
     const old = this.inst[track][slot];
     if (old !== undefined) {
-      this.runtime.instrumentNoteOff(old);
-      this.runtime.removeInstrument(old);
+      for (const id of this.pool[track][slot].length ? this.pool[track][slot] : [old]) {
+        this.runtime.instrumentNoteOff(id);
+        this.runtime.removeInstrument(id);
+      }
       this.inst[track][slot] = undefined;
+      this.pool[track][slot] = [];
+      this.chordBanks.reset();
     }
     this.releaseLoops(`${track}:${slot}`);
     // what the engine held (cache, locks) is not the new engine's: send everything again
     this.forgetLocks();
     for (const k of [...this.soundCache.keys()]) if (k.startsWith(`${track}:${slot}:`)) this.soundCache.delete(k);
     if (v?.kind === undefined) return;
-    const inst = this.runtime.createInstrument(v.kind, { bus: this.slotBus[track][slot] });
-    this.inst[track][slot] = inst;
-    this.runtime.setInstrumentParameter(inst, InstrumentCommonParam.Gain, v.gainDb);
-    for (const [param, value] of v.fixed) this.runtime.setInstrumentParameter(inst, param, value);
+    // a chord slot needs a pool of instances. It takes what the engine's instrument limit leaves after one for every slot still to be
+    // filled, so a project full of chord slots degrades to fewer simultaneous tones instead of failing to load.
+    const unfilled = this.applied.reduce((n, pair) => n + pair.filter((a) => a === "").length, 0);
+    const spare = MAX_INSTRUMENTS - RESERVED_INSTRUMENTS - this.instrumentCount() - unfilled;
+    const want = v.chord ? Math.max(1, Math.min(CHORD_INSTANCES, spare)) : 1;
+    const made: InstrumentId[] = [];
+    for (let i = 0; i < want; i++) {
+      const inst = this.runtime.createInstrument(v.kind, { bus: this.slotBus[track][slot] });
+      this.runtime.setInstrumentParameter(inst, InstrumentCommonParam.Gain, v.gainDb);
+      for (const [param, value] of v.fixed) this.runtime.setInstrumentParameter(inst, param, value);
+      made.push(inst);
+    }
+    this.inst[track][slot] = made[0];
+    this.pool[track][slot] = v.chord ? made : [];
+  }
+
+  /** Instruments alive in the engine (every slot's, a chord slot's whole pool counted). */
+  private instrumentCount(): number {
+    let n = 0;
+    for (let t = 0; t < NUM_TRACKS; t++) for (const slot of [0, 1] as const) n += this.pool[t][slot].length || (this.inst[t][slot] !== undefined ? 1 : 0);
+    return n;
   }
 
   // --- the shared sample library, in the engine ---------------------------------------------------
@@ -464,8 +501,16 @@ export class Groovebox {
   /** Play a track's note: each slot turns it into its own sound. `sounds` are the track's slot knobs (a sample reads its window and decay
    * from them). */
   note(track: number, rig: Rig, params: TrackNote, sounds: SlotSounds): void {
+    const banks: Array<number | undefined> = [];
     for (const play of playSlots(rig, track, params, sounds)) {
       if (play.kind === "instrument") {
+        const pool = this.pool[track][play.slot];
+        if (play.tone !== undefined && pool.length) {
+          // a chord: the tones of one note share a bank, and the next chord goes to the other so this one's release rings on
+          const bank = (banks[play.slot] ??= this.chordBanks.take(`${track}:${play.slot}`));
+          this.runtime.instrumentNoteOn(pool[chordInstance(bank, play.tone, pool.length)], play.params);
+          continue;
+        }
         const inst = this.inst[track][play.slot];
         if (inst !== undefined) this.runtime.instrumentNoteOn(inst, play.params);
       } else {
@@ -512,7 +557,7 @@ export class Groovebox {
     for (let t = 0; t < NUM_TRACKS; t++) {
       for (const slot of [0, 1] as const) {
         const inst = this.inst[t][slot];
-        if (inst !== undefined) this.runtime.instrumentNoteOff(inst);
+        for (const id of this.pool[t][slot].length ? this.pool[t][slot] : inst !== undefined ? [inst] : []) this.runtime.instrumentNoteOff(id);
         this.releaseLoops(`${t}:${slot}`);
       }
     }
@@ -552,11 +597,11 @@ export class Groovebox {
       if (!future && (this.lockedKeys.has(w.key) || this.lfoKeys.has(w.key))) continue;
       this.soundCache.set(w.key, w.value);
       if (!future) {
-        if (w.kind === "inst") this.runtime.setInstrumentParameter(w.instrument, w.param, w.value);
+        if (w.kind === "inst") for (const id of writeTargets(w)) this.runtime.setInstrumentParameter(id, w.param, w.value);
         else if (w.kind === "bus") this.setBus(w.bus, w.key, w.param, w.value);
         else this.setFx(w.bus, w.effect, w.key, w.param, w.value);
       } else if (w.kind === "inst") {
-        events.push({ time: time!, target: { instrument: w.instrument }, param: w.param, value: w.value });
+        for (const id of writeTargets(w)) events.push({ time: time!, target: { instrument: id }, param: w.param, value: w.value });
       } else if (w.kind === "bus") {
         events.push({ time: time!, target: { bus: w.bus }, param: w.param, value: w.value });
         this.busCache.set(w.key, w.value);
@@ -573,7 +618,7 @@ export class Groovebox {
     if (w.kind === "inst") {
       if (this.soundCache.get(w.key) === w.value) return;
       this.soundCache.set(w.key, w.value);
-      this.runtime.setInstrumentParameter(w.instrument, w.param, w.value);
+      for (const id of writeTargets(w)) this.runtime.setInstrumentParameter(id, w.param, w.value);
     } else if (w.kind === "bus") {
       this.setBus(w.bus, w.key, w.param, w.value);
     } else {
@@ -634,7 +679,7 @@ export class Groovebox {
         if (locked !== undefined) now.set(p.id, writes.map((w) => w.key));
         for (const w of writes) {
           if (w.kind === "inst") {
-            events.push({ time, target: { instrument: w.instrument }, param: w.param, value: w.value });
+            for (const id of writeTargets(w)) events.push({ time, target: { instrument: id }, param: w.param, value: w.value });
             this.soundCache.set(w.key, locked !== undefined ? NaN : w.value);
           } else if (w.kind === "bus") {
             this.when(time, () => this.setBus(w.bus, w.key, w.param, w.value));

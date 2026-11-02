@@ -3,13 +3,20 @@
 // SAMPLE. Pure, so the live audio layer and the native sequence play exactly the same thing.
 import type { InstrumentNoteParams } from "webdsp";
 import { SAMPLE_CONTROLS, trackProfile, type Rig } from "./catalogue";
+import { chordAt, chordTones, voicingAt } from "./chord";
 import { normToUnits, TOP_AT } from "./spec";
 
 /** A note for a whole track. `pitch` is semitones from the track's root (`TrackProfile.rootMidi`). */
 export type TrackNote = InstrumentNoteParams;
 
 export type SlotPlay =
-  | { slot: 0 | 1; kind: "instrument"; params: InstrumentNoteParams }
+  | {
+    slot: 0 | 1;
+    kind: "instrument";
+    params: InstrumentNoteParams;
+    /** A chord slot: which tone of the chord this note is (0 = lowest). The consumer maps it onto the slot's pool of instances. */
+    tone?: number;
+  }
   | {
     slot: 0 | 1;
     kind: "sample";
@@ -54,6 +61,19 @@ export function playSlots(rig: Rig, track: number, note: TrackNote, sounds: Slot
         slot, kind: "sample", sample: slotSample(rig, track, slot), time: note.time, velocity: note.velocity ?? 1, pitch, loop, start, end,
         ...(decayNorm >= TOP_AT && !loop ? {} : { decay }),
         ...(loop ? { duration: profile.melodic && note.duration !== undefined ? note.duration : decay } : {}),
+      });
+    } else if (v.pitched && v.chord) {
+      // one sequencer note is the chord's root: every tone starts together and ends with the note's duration, so a note-off needs no
+      // bookkeeping. Each tone is pitched relative to the instrument's own root, as a single note would be.
+      const knob = (key: string) => {
+        const at = v.controls.findIndex((c) => c.key === key);
+        return normToUnits(v.controls[at], sounds[slot][at] ?? 0);
+      };
+      const def = chordAt(knob("type"));
+      const voicing = voicingAt(knob("voicing"));
+      const root = profile.rootMidi + (note.pitch ?? 0);
+      chordTones(root, def, voicing).forEach((midi, tone) => {
+        out.push({ slot, kind: "instrument", tone, params: { ...note, pitch: midi - (v.rootMidi ?? profile.rootMidi) } });
       });
     } else if (v.pitched) {
       out.push({

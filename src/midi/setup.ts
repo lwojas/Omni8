@@ -124,7 +124,7 @@ function wantedRoute(): MidiRoute | null {
   if (filled.length !== 1) return null;
   const v = profile.voices[filled[0]]!;
   const id = gb.ids.inst[track][filled[0] as 0 | 1];
-  if (id === undefined) return null;
+  if (id === undefined || v.chord) return null; // a chord is several instruments: the page fans a key out to its tones
   // a drum pad: any key plays the drum at its own pitch
   if (!v.pitched) return { kind: "instrument", id, unityNote: 60, fixedPitch: true, ...(v.chokeGroup !== undefined ? { chokeGroup: v.chokeGroup } : {}) };
   if (st.arp[track].on || st.selStep >= 0) return null; // the arp, or entering a step's note: the page

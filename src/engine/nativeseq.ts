@@ -24,7 +24,8 @@
 // Not baked: a punch held by the player (it is performed live through the page, and the lanes are left out while it is held, as the
 // live scheduler lets a held punch win), and live keyboard arpeggios.
 import type { SampleId, Sequence, SequenceEvent } from "webdsp";
-import { lockWrites, manglerWrites, mixWrites, soundWrites, trackFxWrites, type GraphIds, type Write } from "./audio";
+import { chordInstance, ChordBanks } from "./chord";
+import { lockWrites, writeTargets, manglerWrites, mixWrites, soundWrites, trackFxWrites, type GraphIds, type Write } from "./audio";
 import { baseValues, laneLayers, layeredTarget, MANGLER_KEYS, type ManglerKey } from "./mangler";
 import { lockParams } from "./plock";
 import { NUM_TRACKS } from "./spec";
@@ -171,12 +172,17 @@ function mulberry32(seed: number): () => number {
 
 /** The sequence events of one track note: one per slot that sounds. A sample slot plays its whole sample (the host's sequence has no
  * start, end or decay for a sample event yet: see docs/dev/hybrid8-plan.md). */
-function noteEvents(n: StepNote, rig: Rig, sounds: SlotSounds, ctx: NativeCtx): SequenceEvent[] {
+export function noteEvents(n: StepNote, rig: Rig, sounds: SlotSounds, ctx: NativeCtx, chords: ChordBanks): SequenceEvent[] {
   const out: SequenceEvent[] = [];
+  const banks: Array<number | undefined> = [];
   const beat = n.params.time * BEATS_PER_SECOND;
   for (const play of playSlots(rig, n.track, n.params, sounds)) {
     if (play.kind === "instrument") {
-      const instrument = ctx.ids.inst[n.track][play.slot];
+      const pool = ctx.ids.pool?.[n.track][play.slot] ?? [];
+      // a chord: this note's tones take one bank of the slot's pool, and the next chord the other (as the live engine does)
+      const instrument = play.tone !== undefined && pool.length
+        ? pool[chordInstance(banks[play.slot] ??= chords.take(`${n.track}:${play.slot}`), play.tone, pool.length)]
+        : ctx.ids.inst[n.track][play.slot];
       if (instrument === undefined) continue;
       const p = play.params;
       out.push({
@@ -202,9 +208,9 @@ function noteEvents(n: StepNote, rig: Rig, sounds: SlotSounds, ctx: NativeCtx): 
   return out;
 }
 
-function writeEvent(w: Write, beat: number, ramp?: { from: number; beats: number }): SequenceEvent {
-  const target = w.kind === "bus" ? { bus: w.bus } : w.kind === "fx" ? { effect: { bus: w.bus, effect: w.effect } } : { instrument: w.instrument };
-  return { beat, kind: "param", target, param: w.param, value: w.value, ...(ramp ? { from: ramp.from, rampBeats: ramp.beats } : {}) };
+function writeEvent(w: Write, beat: number, ramp?: { from: number; beats: number }): SequenceEvent[] {
+  const targets = w.kind === "bus" ? [{ bus: w.bus }] : w.kind === "fx" ? [{ effect: { bus: w.bus, effect: w.effect } }] : writeTargets(w).map((instrument) => ({ instrument }));
+  return targets.map((target) => ({ beat, kind: "param", target, param: w.param, value: w.value, ...(ramp ? { from: ramp.from, rampBeats: ramp.beats } : {}) }));
 }
 
 /** The per-pattern state that travels with a pattern: sound, track FX, and the mixer's faders and sends (mutes folded in). */
@@ -228,6 +234,7 @@ function cycleEvents(song: Song, layout: Layout, ctx: NativeCtx): Loop & { loops
 
   // notes: the same step compile the live scheduler uses, one pattern after another
   const compiler = new StepCompiler();
+  const chords = new ChordBanks();
   const clock = { stepDur: REF_STEP_SECONDS, swing: song.swing, arp: song.arp, rig: song.rig, rnd: mulberry32(0x9e3779b9) };
   // A pattern that repeats for good lets its shorter tracks loop on their own: each becomes a loop of its own length (below) and is left
   // out of the cycle. In any other layout a pattern is played once per cycle, so a shorter track just wraps inside it.
@@ -237,7 +244,7 @@ function cycleEvents(song: Song, layout: Layout, ctx: NativeCtx): Loop & { loops
   for (const e of entries) {
     const pat = song.patterns[e.pattern];
     for (let s = 0; s < pat.length; s++) {
-      compiler.step(pat, s, s, stepCount++, (e.start / STEP_BEATS + s) * REF_STEP_SECONDS, clock, (n) => events.push(...noteEvents(n, song.rig, pat.tracks[n.track].slots, ctx)), (t: number) => !apart.has(t));
+      compiler.step(pat, s, s, stepCount++, (e.start / STEP_BEATS + s) * REF_STEP_SECONDS, clock, (n) => events.push(...noteEvents(n, song.rig, pat.tracks[n.track].slots, ctx, chords)), (t: number) => !apart.has(t));
     }
   }
 
@@ -255,7 +262,7 @@ function cycleEvents(song: Song, layout: Layout, ctx: NativeCtx): Loop & { loops
     if (varying.size && !states.every((st) => sameWrites(st, states[0]))) {
       entries.forEach((e, k) => {
         const bars = Math.ceil(e.beats / BAR_BEATS - 1e-9);
-        for (let j = 0; j < bars; j++) for (const w of states[k]) if (varying.has(w.key)) events.push(writeEvent(w, e.start + j * BAR_BEATS));
+        for (let j = 0; j < bars; j++) for (const w of states[k]) if (varying.has(w.key)) events.push(...writeEvent(w, e.start + j * BAR_BEATS));
       });
     }
   }
@@ -291,11 +298,12 @@ function trackLoop(song: Song, pattern: number, track: number, ctx: NativeCtx): 
   const last = trackLast(pat, track);
   const steps = last % 2 === 0 ? last : last * 2;
   const compiler = new StepCompiler();
+  const chords = new ChordBanks();
   const clock = { stepDur: REF_STEP_SECONDS, swing: song.swing, arp: song.arp, rig: song.rig, rnd: mulberry32(0x9e3779b9) };
   const events: SequenceEvent[] = [];
   const slots: LockSlot[] = [];
   for (let g = 0; g < steps; g++) {
-    compiler.step(pat, g, g, g, g * REF_STEP_SECONDS, clock, (n) => events.push(...noteEvents(n, song.rig, pat.tracks[n.track].slots, ctx)), (t: number) => t === track);
+    compiler.step(pat, g, g, g, g * REF_STEP_SECONDS, clock, (n) => events.push(...noteEvents(n, song.rig, pat.tracks[n.track].slots, ctx, chords)), (t: number) => t === track);
     slots.push({ pat, step: g % last, beat: g * STEP_BEATS + (g % 2 === 1 ? swingBeatsOf(song) : 0) });
   }
   events.push(...trackLockEvents(track, slots, ctx, song.rig));
@@ -347,8 +355,8 @@ function trackLockEvents(t: number, slots: readonly LockSlot[], ctx: NativeCtx, 
     if (!locks && !before) return;
     for (const p of lockParams(t)) {
       const locked = locks?.[p.id];
-      if (locked !== undefined) for (const w of lockWrites(ctx.ids, rig, t, p, locked)) out.push(writeEvent(w, beat));
-      else if (before?.[p.id] !== undefined) for (const w of lockWrites(ctx.ids, rig, t, p, p.base(pat.tracks[t]))) out.push(writeEvent(w, beat));
+      if (locked !== undefined) for (const w of lockWrites(ctx.ids, rig, t, p, locked)) out.push(...writeEvent(w, beat));
+      else if (before?.[p.id] !== undefined) for (const w of lockWrites(ctx.ids, rig, t, p, p.base(pat.tracks[t]))) out.push(...writeEvent(w, beat));
     }
   });
   return out;
@@ -392,7 +400,7 @@ function laneEvents(song: Song, entries: Entry[], ctx: NativeCtx, events: Sequen
     wa.forEach((w, i) => {
       const key = MANGLER_KEYS[i];
       if (!cur.off.has(key) && !before.off.has(key)) return;
-      events.push(cur.ramps && w.value !== wb[i].value ? writeEvent(wb[i], beat, { from: w.value, beats: STEP_BEATS }) : writeEvent(w, beat));
+      events.push(...(cur.ramps && w.value !== wb[i].value ? writeEvent(wb[i], beat, { from: w.value, beats: STEP_BEATS }) : writeEvent(w, beat)));
     });
 
     // the punch section's sends: takeover cuts each punched track's dry signal and feeds it all to the chain, else the sends lift
@@ -400,7 +408,7 @@ function laneEvents(song: Song, entries: Entry[], ctx: NativeCtx, events: Sequen
     const sends = mix(cur.a);
     const was = new Map(mixWrites(ctx.ids, { pattern: song.patterns[prev.e.pattern], mutes: [], solos: [], takeover: before.a.takeover, boost: before.a.boost }, "punch").map((w) => [w.key, w.value]));
     for (const w of sends) {
-      if (w.value !== restMix.get(w.key) || was.get(w.key) !== restMix.get(w.key)) events.push(writeEvent(w, beat));
+      if (w.value !== restMix.get(w.key) || was.get(w.key) !== restMix.get(w.key)) events.push(...writeEvent(w, beat));
     }
   });
 }

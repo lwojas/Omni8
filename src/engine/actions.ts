@@ -222,6 +222,7 @@ export function setDelay(track: number, patch: Partial<DelaySend>): void {
     d.send = clamp01(d.send);
     d.time = clamp01(d.time);
     d.div = Math.max(0, Math.min(BEAT_DIVISIONS.length - 1, Math.round(d.div)));
+    d.fb = d.fb ? 1 : 0;
   });
 }
 

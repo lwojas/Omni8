@@ -4,6 +4,7 @@ import { slotControls, SLOT_NAMES } from "../engine/catalogue";
 import { setLfo } from "../engine/actions";
 import { formatLfoRate, LFO_DIVISION_NAMES, LFO_WAVES } from "../engine/lfo";
 import { soundParam } from "../engine/plock";
+import { readAtTrigger } from "../engine/spec";
 import { useStore } from "../engine/store";
 import { Knob } from "./controls";
 import { Modal } from "./Modal";
@@ -18,7 +19,7 @@ function useTargets(track: number): Array<readonly [string, string]> {
       const v = profile.voices[slot];
       if (!v) continue;
       for (const { control, at } of slotControls(v)) {
-        if (control.dest !== "sample") out.push([soundParam(track, slot, at).id, `${SLOT_NAMES[slot]} · ${control.label}`]);
+        if (!readAtTrigger(control)) out.push([soundParam(track, slot, at).id, `${SLOT_NAMES[slot]} · ${control.label}`]);
       }
     }
     out.push(["fx.delaySend", "DELAY SEND"], ["fx.reverbSend", "REVERB SEND"]);
