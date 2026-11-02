@@ -226,10 +226,11 @@ function MixRow({ track }: { track: number }) {
   const level = useStore((s) => s.patterns[s.pattern].tracks[track].level);
   const mute = useStore((s) => s.mutes[track]);
   const solo = useStore((s) => s.solos[track]);
+  const phone = useMedia(PHONE);
   return (
     <div className="mix-row" style={accentOf(spec)} data-dim={mute}>
       <button type="button" className="mix-name" onClick={() => setState({ focus: track, selStep: -1 })}>{spec.tag}</button>
-      <Slider label="LVL" value={level} def={defaultLevel(track)} onChange={(v) => setLevel(track, v)} />
+      <Slider label="LVL" vertical={phone} value={level} def={defaultLevel(track)} onChange={(v) => setLevel(track, v)} />
       <span className="mix-ms">
         <button type="button" className="btn sm" data-active={mute} aria-pressed={mute} aria-label={`Mute ${spec.name}`} onClick={() => toggleMute(track)}>M</button>
         <button type="button" className="btn sm solo" data-active={solo} aria-pressed={solo} aria-label={`Solo ${spec.name}`} onClick={() => toggleSolo(track)}>S</button>

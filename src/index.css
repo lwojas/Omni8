@@ -1145,6 +1145,21 @@ select.chip.variant {
   color: var(--ink);
 }
 
+.slider[data-vertical] {
+  cursor: ns-resize;
+}
+.slider[data-vertical] .slider-fill {
+  transform-origin: 50% 100%;
+}
+.slider[data-vertical] .slider-value {
+  top: auto;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  transform: none;
+  text-align: center;
+}
+
 /* ---- mixer ------------------------------------------------------------------------------------ */
 
 .mixer {
@@ -2874,4 +2889,52 @@ select.chip.variant {
   --ks: 44px;
   margin: 0 0 0 auto;
   grid-template-columns: repeat(2, 64px);
+}
+
+/* phone mixer: eight vertical faders in two rows of four, with big mute/solo buttons */
+@media (max-width: 699px) {
+  .mixer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: auto repeat(2, minmax(0, 1fr));
+    gap: 10px 8px;
+    row-gap: 22px;
+  }
+  .mixer > .panel-title {
+    grid-column: 1 / -1;
+  }
+  .mix-row,
+  .app .mix-row {
+    max-height: none;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0;
+  }
+  .mix-row .mix-name {
+    flex: none;
+    text-align: center;
+    font-size: 12px;
+  }
+  .mix-row .slider {
+    flex: 1 1 0;
+    min-height: 90px;
+  }
+  .mix-row .slider-value {
+    left: 0;
+    right: 0;
+    font-size: 11px;
+  }
+  .mix-ms {
+    flex: none;
+    gap: 6px;
+  }
+  .mix-ms .btn.sm,
+  .mix-row .btn.sm {
+    flex: none;
+    height: 36px;
+    font-size: 14px;
+    font-weight: 700;
+  }
 }
