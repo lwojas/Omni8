@@ -25,7 +25,7 @@
 // live scheduler lets a held punch win), and live keyboard arpeggios.
 import type { SampleId, Sequence, SequenceEvent } from "webdsp";
 import { chordInstance, ChordBanks } from "./chord";
-import { lockWrites, writeTargets, manglerWrites, mixWrites, soundWrites, trackFxWrites, type GraphIds, type Write } from "./audio";
+import { lockWrites, writeTargets, manglerWrites, mixWrites, soundWrites, trackFxWrites, type GraphIds, type MixInput, type Write } from "./audio";
 import { baseValues, laneLayers, layeredTarget, MANGLER_KEYS, type ManglerKey } from "./mangler";
 import { lockParams } from "./plock";
 import { NUM_TRACKS } from "./spec";
@@ -55,6 +55,8 @@ export interface Song {
   patterns: readonly Pattern[];
   mutes: readonly boolean[];
   solos: readonly boolean[];
+  /** PERFORM mode: the shared faders (with `mutes` / `solos` above, for every pattern). Absent (SONG mode): each pattern's own. */
+  perform?: readonly number[];
   swing: number;
   arp: readonly ArpSettings[];
   /** Written FX lanes play (the FX PLAY switch). */
@@ -216,7 +218,9 @@ function writeEvent(w: Write, beat: number, ramp?: { from: number; beats: number
 /** The per-pattern state that travels with a pattern: sound, track FX, and the mixer's faders and sends (mutes folded in). */
 function patternState(song: Song, pattern: number, ctx: NativeCtx): Write[] {
   const p = song.patterns[pattern];
-  const mix = { pattern: p, mutes: song.mutes, solos: song.solos, takeover: false, boost: 0 };
+  const mix: MixInput = song.perform
+    ? { pattern: p, mutes: song.mutes, solos: song.solos, levels: song.perform, takeover: false, boost: 0 }
+    : { pattern: p, mutes: p.tracks.map((t) => !!t.mute), solos: p.tracks.map((t) => !!t.solo), takeover: false, boost: 0 };
   return [
     ...soundWrites(ctx.ids, p, song.rig).map((w) => ({ ...w, key: `i${w.key}` })),
     ...trackFxWrites(ctx.ids, p, ctx.clamp).map((w) => ({ ...w, key: `f${w.key}` })),

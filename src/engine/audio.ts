@@ -68,6 +68,8 @@ export interface MixInput {
   pattern: Pattern;
   mutes: readonly boolean[];
   solos: readonly boolean[];
+  /** Fader levels overriding the pattern's own (PERFORM mode). */
+  levels?: readonly number[];
   takeover: boolean;
   boost: number;
 }
@@ -117,7 +119,7 @@ export function mixWrites(ids: GraphIds, mix: MixInput, group: "pattern" | "punc
     const tp = mix.pattern.tracks[t];
     if (group !== "punch") {
       // the fader/mute sits before every tap, so a muted track's delay and reverb go quiet too
-      bus(ids.trackBus[t], `${t}:g`, NodeParam.BusGain, audible ? levelToGain(tp.level) : 0);
+      bus(ids.trackBus[t], `${t}:g`, NodeParam.BusGain, audible ? levelToGain(mix.levels?.[t] ?? tp.level) : 0);
       bus(ids.trackBus[t], `${t}:d`, NodeParam.BusSendAmount, tp.dly.send);
       bus(ids.busB[t], `${t}:r`, NodeParam.BusSendAmount, tp.rev.send);
     }

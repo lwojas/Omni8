@@ -6,7 +6,7 @@ import { defaultSlotSound, defaultVariant, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, SYN
 import type { Lfo } from "./lfo";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
-import { clearTrackSteps, GATES, newPattern, PAGE, randomizeTrack, type Pattern } from "./state";
+import { clearTrackSteps, GATES, muteOf, newPattern, PAGE, randomizeTrack, soloOf, type MixMode, type Pattern } from "./state";
 import { BEAT_DIVISIONS, filterOpen, newFilter, type DelaySend, type ReverbSend, type TrackFilter } from "./trackfx";
 import { editPattern, getState, setState } from "./store";
 
@@ -212,7 +212,9 @@ export function setSlotSample(track: number, slot: 0 | 1, id: string): void {
 export const slotFilled = (slot: SlotRig): boolean => voiceOf(slot) !== undefined;
 
 export function setLevel(track: number, value: number): void {
-  editPattern((p) => { p.tracks[track].level = clamp01(value); });
+  const v = clamp01(value);
+  if (getState().mixMode === "perform") setState((s) => ({ perfLevels: s.perfLevels.map((l, i) => (i === track ? v : l)) }));
+  else editPattern((p) => { p.tracks[track].level = v; });
 }
 
 export function setDelay(track: number, patch: Partial<DelaySend>): void {
@@ -266,21 +268,46 @@ export function setArp(track: number, patch: Partial<ArpSettings>): void {
   setState((s) => ({ arp: s.arp.map((a, i) => (i === track ? normalizeArp({ ...a, ...patch }) : a)) }));
 }
 
+/** Set one track's mute or solo where the current mode keeps it: the pattern in SONG mode, the shared set in PERFORM. */
+function setMix(kind: "mute" | "solo", track: number, on: boolean): void {
+  const key = kind === "mute" ? "mutes" : "solos";
+  if (getState().mixMode === "perform") {
+    setState((s) => (s[key][track] === on ? {} : { [key]: s[key].map((m, i) => (i === track ? on : m)) }));
+  } else {
+    editPattern((p) => { if (on) p.tracks[track][kind] = true; else delete p.tracks[track][kind]; });
+  }
+}
+
+const isOn = (kind: "mute" | "solo", track: number): boolean => {
+  const s = getState();
+  return (kind === "mute" ? muteOf : soloOf)(s, s.patterns[s.pattern], track);
+};
+
 export function toggleMute(track: number): void {
-  setState((s) => ({ mutes: s.mutes.map((m, i) => (i === track ? !m : m)) }));
+  setMix("mute", track, !isOn("mute", track));
 }
 
 /** Set (not toggle) mute and solo: what an external control sends. */
 export function setMute(track: number, on: boolean): void {
-  setState((s) => (s.mutes[track] === on ? {} : { mutes: s.mutes.map((m, i) => (i === track ? on : m)) }));
+  if (isOn("mute", track) !== on) setMix("mute", track, on);
 }
 
 export function setSolo(track: number, on: boolean): void {
-  setState((s) => (s.solos[track] === on ? {} : { solos: s.solos.map((m, i) => (i === track ? on : m)) }));
+  if (isOn("solo", track) !== on) setMix("solo", track, on);
 }
 
 export function toggleSolo(track: number): void {
-  setState((s) => ({ solos: s.solos.map((m, i) => (i === track ? !m : m)) }));
+  setMix("solo", track, !isOn("solo", track));
+}
+
+/** Switch between SONG and PERFORM mixing. Entering PERFORM, the faders start where the current pattern has them. */
+export function setMixMode(mode: MixMode): void {
+  setState((s) => {
+    if (s.mixMode === mode) return {};
+    if (mode === "song") return { mixMode: mode };
+    const p = s.patterns[s.pattern];
+    return { mixMode: mode, perfLevels: p.tracks.map((t) => t.level), mutes: p.tracks.map((t) => !!t.mute), solos: p.tracks.map((t) => !!t.solo) };
+  });
 }
 
 /** Set one punch's character parameter. */

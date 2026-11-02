@@ -9,7 +9,7 @@ import { controller } from "../engine/controller";
 import { PING_PONG, PING_PONG_NOW_STEPS, punchById, PUNCHES, SWEEPS } from "../engine/mangler";
 import { hasLocks, lockStep, soundParam } from "../engine/plock";
 import { formatControl, readAtTrigger, TRACKS } from "../engine/spec";
-import { BANK_SIZE, defaultLevel, MAX_CHAIN, NUM_PATTERNS } from "../engine/state";
+import { BANK_SIZE, defaultLevel, levelOf, MAX_CHAIN, muteOf, NUM_PATTERNS, soloOf } from "../engine/state";
 import { BEAT_DIVISIONS, BEAT_ORDER, beatPosition, defaultDelaySend, defaultReverbSend, DELAY_MODES, filterOpen, FILTER_MODES, formatDist, formatFilterHz, formatFreeDelay } from "../engine/trackfx";
 import { getState, setState, useStore } from "../engine/store";
 import { Knob, Slider } from "./controls";
@@ -223,9 +223,9 @@ export function SoundPanel() {
 
 function MixRow({ track }: { track: number }) {
   const spec = useProfile(track);
-  const level = useStore((s) => s.patterns[s.pattern].tracks[track].level);
-  const mute = useStore((s) => s.mutes[track]);
-  const solo = useStore((s) => s.solos[track]);
+  const level = useStore((s) => levelOf(s, s.patterns[s.pattern], track));
+  const mute = useStore((s) => muteOf(s, s.patterns[s.pattern], track));
+  const solo = useStore((s) => soloOf(s, s.patterns[s.pattern], track));
   const phone = useMedia(PHONE);
   return (
     <div className="mix-row" style={accentOf(spec)} data-dim={mute}>
