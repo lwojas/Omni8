@@ -543,11 +543,21 @@ button.oled {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-select.chip.variant {
+/* every select: custom chevron inset from the right edge instead of the native one */
+select.chip.variant,
+.modal-input.modal-select {
   appearance: none;
   -webkit-appearance: none;
-  background: var(--cap);
-  padding-right: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa0aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px 6px;
+  padding-right: 28px;
+}
+select.chip.variant {
+  background-color: var(--cap);
+  background-position: right 8px center;
+  padding-right: 24px;
 }
 .empty-slot {
   grid-column: 1 / -1;
@@ -2648,9 +2658,9 @@ select.chip.variant {
   border-radius: var(--radius);
   font: 14px var(--font-mono);
 }
-.modal-select {
-  appearance: auto;
+.modal .modal-select {
   min-width: 0;
+  padding-right: 28px;
 }
 .modal-input:focus-visible {
   outline: 2px solid var(--tone);
