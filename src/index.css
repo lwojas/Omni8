@@ -2537,6 +2537,25 @@ select.chip.variant {
   }
 }
 
+/* desktop: the menu's buttons and selects are slimmer (touch sizes stay for narrow screens) */
+@media (min-width: 700px) {
+  .modal .btn,
+  .modal .modal-input,
+  .modal .resample-row > .btn {
+    min-height: 28px;
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .modal .btn.sm {
+    min-width: 28px;
+    padding: 0 6px;
+  }
+  .modal-item {
+    padding: 5px 10px;
+  }
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2595,7 +2614,9 @@ select.chip.variant {
   border-bottom: 0;
 }
 .menu-group > .silk {
+  font-size: 13px;
   letter-spacing: 0.12em;
+  color: var(--text);
 }
 .menu-row {
   display: grid;
@@ -2616,7 +2637,7 @@ select.chip.variant {
   min-width: 0;
 }
 .menu-field .silk {
-  font-size: 10px;
+  font-size: 11px;
 }
 .modal-input {
   min-height: 38px;
