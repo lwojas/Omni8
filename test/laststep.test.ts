@@ -4,7 +4,7 @@ import { defaultArp } from "../src/engine/arp";
 import { setLastStep, setLength } from "../src/engine/actions";
 import type { GraphIds } from "../src/engine/audio";
 import type { Sequence } from "webdsp";
-import { positionAt, steadySequence, transitionSequence, type NativeCtx, type Song } from "../src/engine/nativeseq";
+import { cueLayout, positionAt, steadySequence, transitionSequence, type NativeCtx, type Song } from "../src/engine/nativeseq";
 import { fromHostSnapshot, toHostSnapshot } from "../src/engine/persist";
 import { NUM_TRACKS } from "../src/engine/spec";
 import { StepCompiler } from "../src/engine/stepcompile";
@@ -139,6 +139,31 @@ describe("last step: playback (polymeter)", () => {
     expect(chain.loops).toBeUndefined();
     expect(simulate(chain, inst(0), 8)).toEqual([0, 3.25]);
     expect(seqOf([a], layoutOf(0, 0))!.loops).toHaveLength(1);
+  });
+
+  it("a pattern repeated in a chain keeps its shorter tracks counting through the repeats, and restarts them when the pattern changes", () => {
+    const a = newPattern();
+    a.tracks[0].last = 13;
+    a.tracks[0].steps[0].on = true;
+    // A A B: A's 13-step track hits at steps 0, 13 and 26 of the run, straight through the second pass
+    const seq = seqOf([a, newPattern()], layoutOf(0, 0, 1))!;
+    expect(seq.loops).toBeUndefined();
+    expect(simulate(seq, inst(0), 12)).toEqual([0, 3.25, 6.5]); // steps 0, 13, 26 of the run
+    // A B A: the second A starts afresh, at its own beat 8
+    expect(simulate(seqOf([a, newPattern()], layoutOf(0, 1, 0))!, inst(0), 12)).toEqual([0, 3.25, 8, 11.25]);
+  });
+
+  it("positionAt: a run is counted from where the pattern last changed", () => {
+    const ps = [newPattern(), newPattern()];
+    expect(positionAt(ps, layoutOf(0, 0, 1), 5)).toMatchObject({ entry: 1, step: 4, run: 20 });
+    expect(positionAt(ps, layoutOf(0, 0, 1), 8)).toMatchObject({ entry: 2, step: 0, run: 0 });
+    expect(positionAt(ps, layoutOf(1, 0, 0), 9)).toMatchObject({ entry: 2, step: 4, run: 20 });
+  });
+
+  it("cueing into a chain of one pattern starts its run at the cue", () => {
+    const ps = [newPattern(), newPattern()];
+    expect(cueLayout(ps, true, [1, 1, 1], 1, 8)).toEqual({ patterns: [1], origin: 8 });
+    expect(cueLayout(ps, true, [0, 1, 1], 1, 8)).toEqual({ patterns: [0, 1, 1], origin: 4 });
   });
 
   it("an origin shifts every loop with the rest of the song", () => {
