@@ -4,6 +4,7 @@ import { normalizeArp, type ArpSettings } from "./arp";
 import { controller } from "./controller";
 import { defaultSlotSound, defaultVariant, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, SYNTH_VOICE_KEYS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
 import type { Lfo } from "./lfo";
+import { sanitizeSidechain, scLoops, sidechainOf, type Sidechain } from "./sidechain";
 import { chainLabel, chainMove, chainRemove, chainRepeats } from "./song";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
@@ -115,6 +116,17 @@ export function setLockable(track: number, id: string, value: number): void {
 /** Edit LFO `index` of a track (in the current pattern). */
 export function setLfo(track: number, index: number, patch: Partial<Lfo>): void {
   editPattern((p) => { Object.assign(p.tracks[track].lfos[index], patch); });
+}
+
+/** Edit the track's sidechain (in the current pattern): the first edit creates it, and a source that would close a loop is refused. */
+export function setSidechain(track: number, patch: Partial<Sidechain>): void {
+  editPattern((p) => {
+    const tracks = p.tracks;
+    const next = sanitizeSidechain({ ...sidechainOf(tracks[track], track), ...patch }, track);
+    if (!next) return;
+    if (next.on && scLoops(tracks, track, next.src)) return;
+    tracks[track].sc = next;
+  });
 }
 
 /** A sound knob of a slot moved: see `setLockable`. */

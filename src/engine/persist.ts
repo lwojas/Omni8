@@ -10,6 +10,7 @@ import { normalizeChain } from "./song";
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { newLfos, sanitizeLfos } from "./lfo";
+import { breakLoops, sanitizeSidechain } from "./sidechain";
 import { BEAT_DIVISIONS, filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
 import { normalizeScale, type ProjectScale } from "./scale";
 import { CURRENT_STORE, idbRequest, openDb, SAVES_STORE, txDone } from "./db";
@@ -61,6 +62,9 @@ function normalize(p: Pattern): void {
     t.dly.fb = t.dly.fb ? 1 : 0;
     if (!t.rev) t.rev = newReverb(i);
     t.lfos = sanitizeLfos(t.lfos);
+    const sc = sanitizeSidechain(t.sc, i);
+    if (sc) t.sc = sc;
+    else delete t.sc;
     if (typeof t.punch !== "boolean") t.punch = true;
     if (!t.filter || typeof t.filter !== "object") t.filter = newFilter();
     t.filter.mode = t.filter.mode === 1 ? 1 : 0;
@@ -72,6 +76,7 @@ function normalize(p: Pattern): void {
     if (typeof t.last !== "number" || !Number.isFinite(t.last) || t.last < 1 || t.last >= p.length) delete t.last;
     else t.last = Math.floor(t.last);
   });
+  breakLoops(p.tracks);
   if (!Array.isArray(p.mangler?.param)) p.mangler = defaultMangler();
 }
 

@@ -15,6 +15,7 @@ import { BEAT_DIVISIONS, BEAT_ORDER, beatPosition, defaultDelaySend, defaultReve
 import { getState, setState, useStore } from "../engine/store";
 import { Knob, Slider } from "./controls";
 import { LfoButton } from "./LfoModal";
+import { SidechainButton } from "./SidechainModal";
 import { Modal } from "./Modal";
 import { ConfirmButton } from "./Sequencer";
 import { PHONE, useMedia } from "./useMedia";
@@ -195,7 +196,10 @@ export function SoundPanel() {
       </div>
       <div className="plock-row">
         <PlockBar track={track} />
-        <LfoButton track={track} />
+        <div className="lfo-btn fx-btns">
+          <LfoButton track={track} />
+          <SidechainButton track={track} />
+        </div>
       </div>
       <div className="sends" role="group" aria-label="FX sends">
         <span className="silk">SENDS</span>

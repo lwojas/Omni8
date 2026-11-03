@@ -21,6 +21,7 @@ AppState
 │       │    ├─ dist        distortion insert (a track with a synth), 0 = off
 │       │    ├─ filter: { mode, cut, res }         LP/HP insert (every other track)
 │       │    ├─ lfos[3]: { on, target, wave, sync, rate, div, depth }
+│       │    ├─ sc?: { on, src, amt, rel }         sidechain ducking (absent = off); see sidechain.ts
 │       │    ├─ punch: boolean                     does this track take part in the Punch FX
 │       │    └─ last?: 1-based last step (absent = pattern length); the track loops there, see timing
 │       ├─ fxLanes[3]  one recorded punch-in take each (FX_LANES):
@@ -129,7 +130,7 @@ Every load path (autosave, named save, import) goes through `parseProject`:
 1. Bounds-check the container (1–64 patterns), build the `rig` with `normalizeRig` (an unknown engine, an unusable drum voice or
    a missing sample falls back to that slot's starting value, and an unknown synth voice becomes ACID), and pad short arrays with
    fresh patterns.
-2. `normalize` each pattern: fill missing `dly`/`rev`, clean `lfos` (`sanitizeLfos`), default `punch` to true, clamp `filter`,
+2. `normalize` each pattern: fill missing `dly`/`rev`, clean `lfos` (`sanitizeLfos`), clean `sc` (`sanitizeSidechain`) and switch off any loop of them (`breakLoops`), default `punch` to true, clamp `filter`,
    `dist` and every slot value to 0..1, drop an out-of-range `last`, and rebuild `mangler` if its `param` array is missing.
 3. `valid()`: structural checks: every track present, 64 steps, two slots of exactly `SLOT_KNOBS` finite numbers, lane lengths.
    A project failing validation is rejected whole; it is never partially loaded.

@@ -8,6 +8,7 @@ import { defaultArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { defaultScale, isChromatic, notesInRange, rootAtOrAbove, type ProjectScale } from "./scale";
 import { newLfos, type Lfo } from "./lfo";
+import type { Sidechain } from "./sidechain";
 import { newDelay, newDist, newFilter, newReverb, type DelaySend, type ReverbSend, type TrackFilter } from "./trackfx";
 
 export const MAX_STEPS = 64;
@@ -82,6 +83,8 @@ export interface TrackPattern {
   filter: TrackFilter;
   /** The track's LFOs (see lfo.ts). */
   lfos: Lfo[];
+  /** Ducking to another track's signal (see sidechain.ts). Absent (older saves, and a track never touched) means off. */
+  sc?: Sidechain;
   /** Punch FX send gate: false keeps the track out of the punch section (neither fed nor taken over). */
   punch: boolean;
   /** Octave shift for melodic tracks. */

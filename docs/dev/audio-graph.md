@@ -21,7 +21,7 @@ slot B engine ─▶ SLOT_B bus (LEVEL) ─┘                           │    
 | Bus | Holds | Sends |
 |---|---|---|
 | **SLOT_A / SLOT_B** | The slot's engine (an instrument, or sample voices), and the slot's LEVEL as the bus gain | main route to bus A |
-| **A** | The distortion insert (Saturation), the filter insert (Filter), then the fader and mute (`BusGain`) | the track's delay send |
+| **A** | The distortion insert (Saturation), the filter insert (Filter), the sidechain Compressor, then the fader and mute (`BusGain`) | the track's delay send |
 | **B** | | the track's reverb send |
 | **C** | The takeover cut (`BusMainGain`) | the punch send |
 | **DELAY_t** | Dub Delay (beat mode) → Delay (free mode); one is live, the other has mix 0 | |
@@ -44,6 +44,25 @@ Both inserts exist on every track's bus A; the UI shows one, chosen by the track
 
 The inactive insert is held at its transparent value (`actions.ts` resets it when a track changes kind). Bus effects run before
 the bus gain, so the chain is slot ▶ insert ▶ fader ▶ sends, and the delay and reverb hear the processed sound.
+
+### The sidechain
+
+Every track's bus A ends its effect chain with a webdsp Compressor (`scFx`) whose `CompSidechain` names another track's bus A: the
+detector listens to that bus and the gain reduction is applied to this track. `sidechain.ts` fixes everything but the two knobs the
+modal shows: ratio 12, attack 2 ms, knee 3 dB, AMOUNT as the threshold (−6 dB to −30 dB) and RELEASE (40–500 ms).
+
+- **Off** is ratio 1 and key 0. Ratio 1 is webdsp's exact no-op, and the key must be cleared too, or the compressor would compress the
+  track against itself.
+- **The key** is the source's bus A after its chain, fader and mute (webdsp's tap for sends and meters), so mute and level matter. The
+  source's bus is run before the bus that listens to it, whatever their order.
+- **Loops** are refused by the engine (a key falls back to 0). The page never holds one: `setSidechain` and the source menu refuse
+  them, a saved file's loops are switched off, and `trackFxWrites` sends the writes that switch a sidechain off before those that switch
+  one on, so swapping two between patterns never meets the guard.
+- **Needs webdsp with `CompSidechain`** (docs/compressor-node.md there; the WASM must be rebuilt). `Groovebox` adds the compressors only
+  when the engine lists `CompSidechain` among the compressor's parameters (`ids.scFx` is undefined otherwise and no sidechain
+  write is made), so an older build leaves SC doing nothing rather than compressing a track against itself. In a plugin it also
+  needs the host built from that webdsp.
+- No new buses: the 57 in use are unchanged.
 
 ### Consequences, deliberately
 

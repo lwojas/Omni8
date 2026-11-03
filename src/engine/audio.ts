@@ -32,12 +32,13 @@ import { defaultWorkletUrl } from "webdsp/worklet-url";
 import { baseValues, MANGLER_KEYS, MANGLER_PARAMS, type FxSlot, type ManglerValues } from "./mangler";
 import { CHORD_INSTANCES, chordInstance, ChordBanks } from "./chord";
 import { lfoOffset } from "./lfo";
+import { SC_ATTACK_S, SC_KNEE_DB, SC_RATIO, scReleaseSeconds, scThresholdDb, sidechainOf } from "./sidechain";
 import { lockParam, lockParams, type LockParam } from "./plock";
 import { controlAt, LEVEL_AT, trackProfile, voiceOf, type Rig, type VoiceSpec } from "./catalogue";
 import { sampleBytes } from "./samples";
 import { playSlots, type SlotPlay, type SlotSounds, type TrackNote } from "./slots";
 import { normToUnits, NUM_TRACKS, readAtTrigger } from "./spec";
-import { trackStepAt, type Pattern } from "./state";
+import { trackStepAt, type Pattern, type TrackPattern } from "./state";
 import {
   BEAT_DIVISIONS, DELAY_TONE, delayFeedback, distDriveDb, distMix, distTrimDb, filterHz, filterQ, freeDelaySeconds, reverbDamping, reverbDecay,
 } from "./trackfx";
@@ -88,6 +89,8 @@ export interface GraphIds {
   distFx: readonly EffectId[];
   /** Per track: the LP/HP filter insert on bus A, next to the distortion. */
   filterFx: readonly EffectId[];
+  /** Per track: the sidechain compressor, last on bus A (after the inserts, before the fader and sends). */
+  scFx?: readonly EffectId[];
   /** Per track and slot: the slot's bus (its level). */
   slotBus: ReadonlyArray<readonly [BusId, BusId]>;
   /** Per track and slot: the engine's instrument, undefined for an empty slot or a sample. Changes when an engine is swapped. */
@@ -157,13 +160,34 @@ export function trackFxWrites(ids: GraphIds, pattern: Pattern, clamp: (param: nu
     fx(ids.reverbBus[t], ids.reverbFx[t], "decay", NodeParam.ReverbDecay, reverbDecay(rev.size));
     fx(ids.reverbBus[t], ids.reverbFx[t], "damp", NodeParam.ReverbDamping, reverbDamping(rev.size));
     for (const w of distWrites(ids, t, pattern.tracks[t].dist)) out.push(w);
+    for (const w of scWrites(ids, t, pattern.tracks[t])) out.push(w);
     const { filter } = pattern.tracks[t];
     const f = (key: string, param: NodeParam, value: number) => out.push({ kind: "fx", key: `${t}:${key}`, bus: ids.trackBus[t], effect: ids.filterFx[t], param, value: clamp(param, value) });
     f("fMode", NodeParam.FilterMode, filter.mode);
     f("fCut", NodeParam.FilterCutoff, filterHz(filter.cut));
     f("fRes", NodeParam.FilterResonance, filterQ(filter.res));
   }
-  return out;
+  // A key the engine would refuse (it would close a loop) must not land before the key that breaks the loop is gone: sidechains that are
+  // switching off go first, the ones switching on last.
+  const isKey = (w: Write) => w.key.endsWith(":scKey");
+  return [...out.filter((w) => isKey(w) && w.value === 0), ...out.filter((w) => !isKey(w)), ...out.filter((w) => isKey(w) && w.value !== 0)];
+}
+
+/** A track's sidechain compressor: the key and ratio carry the on/off (ratio 1 is an exact pass-through, and a compressor with no key would
+ * otherwise compress the track against itself), the rest follow AMOUNT and RELEASE. */
+function scWrites(ids: GraphIds, track: number, tp: TrackPattern): Write[] {
+  if (!ids.scFx) return [];
+  const sc = sidechainOf(tp, track);
+  const bus = ids.trackBus[track];
+  const fx = (key: string, param: NodeParam, value: number): Write => ({ kind: "fx", key: `${track}:${key}`, bus, effect: ids.scFx![track], param, value });
+  return [
+    fx("scKey", NodeParam.CompSidechain, sc.on ? ids.trackBus[sc.src] : 0),
+    fx("scRatio", NodeParam.CompRatio, sc.on ? SC_RATIO : 1),
+    fx("scThr", NodeParam.CompThreshold, scThresholdDb(sc.amt)),
+    fx("scAtk", NodeParam.CompAttack, SC_ATTACK_S),
+    fx("scRel", NodeParam.CompRelease, scReleaseSeconds(sc.rel)),
+    fx("scKnee", NodeParam.CompKnee, SC_KNEE_DB),
+  ];
 }
 
 /** A synth's distortion insert at amount `dist` (0..1): Saturation drive, output trim and mix, which move together. */
@@ -241,6 +265,7 @@ export class Groovebox {
   private readonly distFx: EffectId[] = [];
   private readonly slotBus: Array<[BusId, BusId]> = [];
   private readonly filterFx: EffectId[] = [];
+  private readonly scFx: EffectId[] = [];
   private readonly inst: Array<[InstrumentId | undefined, InstrumentId | undefined]> = [];
   /** A CHORD slot's instances (`inst` is the first): one note plays several tones, and an instrument is monophonic. */
   private readonly pool: Array<[InstrumentId[], InstrumentId[]]> = [];
@@ -298,9 +323,11 @@ export class Groovebox {
     runtime.setEffectParameter(this.manglerBus, this.fx.filter, NodeParam.FilterMode, FilterMode.LowPass);
     runtime.setEffectParameter(this.manglerBus, this.fx.phaser, NodeParam.PhaserStages, 6);
 
-    for (const kind of [EffectKind.Delay, EffectKind.DubDelay, EffectKind.Reverb]) {
+    for (const kind of [EffectKind.Delay, EffectKind.DubDelay, EffectKind.Reverb, EffectKind.Compressor]) {
       for (const p of runtime.getEffectParams(kind)) this.effectRange.set(p.id, { min: p.min, max: p.max });
     }
+    // An engine from before the sidechain would take the ratio and ignore the key, compressing a track against itself: without the parameter there is no compressor.
+    const sidechain = runtime.getEffectParams(EffectKind.Compressor).some((p) => p.id === NodeParam.CompSidechain);
     for (let t = 0; t < NUM_TRACKS; t++) {
       const bus = runtime.createBus();
       const b = runtime.createBus();
@@ -334,6 +361,8 @@ export class Groovebox {
       this.distFx.push(runtime.addEffect(bus, EffectKind.Saturation));
       // ... and so does the LP/HP filter insert (a track shows one or the other, see TrackProfile.insert); at LP with the cutoff open it passes everything
       this.filterFx.push(runtime.addEffect(bus, EffectKind.Filter));
+      // ... then the sidechain compressor, last on bus A: it ducks the finished track (see sidechain.ts). Bypassed until its first write, which is ratio 1 or a key
+      if (sidechain) this.scFx.push(runtime.addEffect(bus, EffectKind.Compressor));
       // each slot has its own bus into bus A: its level
       const sb: BusId[] = [];
       for (let slot = 0; slot < 2; slot++) {
@@ -348,7 +377,7 @@ export class Groovebox {
     }
     this.ids = {
       trackBus: this.trackBus, busB: this.busB, busC: this.busC, delayBus: this.delayBus, reverbBus: this.reverbBus,
-      delayFx: this.delayFx, reverbFx: this.reverbFx, distFx: this.distFx, filterFx: this.filterFx, slotBus: this.slotBus,
+      delayFx: this.delayFx, reverbFx: this.reverbFx, distFx: this.distFx, filterFx: this.filterFx, scFx: sidechain ? this.scFx : undefined, slotBus: this.slotBus,
       inst: this.inst, pool: this.pool, manglerBus: this.manglerBus, fx: this.fx,
     };
     this.applyManglerValues(baseValues());
