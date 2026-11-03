@@ -407,11 +407,14 @@ export async function refreshLibrary(): Promise<void> {
 export async function importSampleFile(file: File): Promise<string> {
   if (file.size > 12 * 1024 * 1024) throw new Error("That file is too large (12 MB at most).");
   const bytes = await file.arrayBuffer();
+  // decoded once here so a file the browser cannot read is refused now, not at the first note
+  const probe = new AudioContext();
   try {
-    // decoded once here so a file the browser cannot read is refused now, not at the first note
-    await new AudioContext().decodeAudioData(bytes.slice(0));
+    await probe.decodeAudioData(bytes.slice(0));
   } catch {
     throw new Error("That file could not be read as audio.");
+  } finally {
+    void probe.close().catch(() => undefined); // a context left open holds an audio thread, and browsers cap how many may exist
   }
   const info = await importSample(file.name, bytes, getState().library);
   setState((s) => ({ library: [...s.library, info] }));
