@@ -15,7 +15,20 @@ export const PAGE = 16;
 export const NUM_PATTERNS = 64;
 /** The desktop pattern bar shows one bank of this many patterns at a time. */
 export const BANK_SIZE = 16;
+/** Entries in the chain. */
 export const MAX_CHAIN = 64;
+/** A chain entry plays its pattern this many times at most, and the chain's entries together this many passes (the host's sequence holds every pass). */
+export const MAX_REPEATS = 99;
+export const MAX_PASSES = 256;
+export const MAX_LABEL = 16;
+
+/** One instruction of the chain: play `pattern` `repeats` times, then move on. */
+export interface ChainEntry {
+  pattern: number;
+  repeats: number;
+  /** What the entry is called in the chain ("Intro"); the same pattern can carry a different one in each entry. */
+  label?: string;
+}
 export const LENGTHS = [16, 32, 48, 64] as const;
 
 export interface Step {
@@ -154,7 +167,7 @@ export interface AppState {
   /** Which engine is in each slot of each track (see catalogue.ts). Project-wide, not per pattern. */
   rig: Rig;
   patterns: Pattern[];
-  chain: number[];
+  chain: readonly ChainEntry[];
   chainOn: boolean;
   bpm: number;
   swing: number;
@@ -195,6 +208,7 @@ export interface AppState {
   /** The DAW's tempo while a plugin host plays the song (the project's own tempo is not used then); null otherwise. */
   hostBpm: number | null;
   playPattern: number;
+  /** Index of the pass being played in the chain's passes (`chainPasses`): the entry and repeat are `passAt`. */
   chainPos: number;
   cue: number | null;
   // FX performance
@@ -209,6 +223,8 @@ export interface AppState {
   punchSel: number;
   // pattern bank tools
   chainEdit: boolean;
+  /** The chain entry being edited (-1: none): a tap on a pattern slot then changes its pattern instead of adding an entry. */
+  chainSel: number;
   copyArm: boolean;
   /** P-LOCK mode: taps select steps (empty ones too) instead of editing them, and sound controls write the selected step's locks. */
   plock: boolean;
@@ -411,6 +427,7 @@ export function initialState(): AppState {
     punch: 0,
     punchSel: 1,
     chainEdit: false,
+    chainSel: -1,
     copyArm: false,
     plock: false,
   };

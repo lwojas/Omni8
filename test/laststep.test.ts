@@ -11,6 +11,8 @@ import { StepCompiler } from "../src/engine/stepcompile";
 import { DEFAULT_RIG, initialState, newPattern, trackLast, trackStepAt, type Pattern } from "../src/engine/state";
 import { getState, replaceState } from "../src/engine/store";
 
+const ch = (...ps: number[]) => ps.map((pattern) => ({ pattern, repeats: 1 }));
+
 const ids: GraphIds = {
   trackBus: [1, 2, 3, 4, 5, 6, 7, 8], busB: [11, 12, 13, 14, 15, 16, 17, 18], busC: [21, 22, 23, 24, 25, 26, 27, 28],
   delayBus: [31, 32, 33, 34, 35, 36, 37, 38], reverbBus: [41, 42, 43, 44, 45, 46, 47, 48],
@@ -162,8 +164,8 @@ describe("last step: playback (polymeter)", () => {
 
   it("cueing into a chain of one pattern starts its run at the cue", () => {
     const ps = [newPattern(), newPattern()];
-    expect(cueLayout(ps, true, [1, 1, 1], 1, 8)).toEqual({ patterns: [1], origin: 8 });
-    expect(cueLayout(ps, true, [0, 1, 1], 1, 8)).toEqual({ patterns: [0, 1, 1], origin: 4 });
+    expect(cueLayout(ps, true, ch(1, 1, 1), 1, 8)).toEqual({ patterns: [1], origin: 8 });
+    expect(cueLayout(ps, true, ch(0, 1, 1), 1, 8)).toEqual({ patterns: [0, 1, 1], origin: 4 });
   });
 
   it("an origin shifts every loop with the rest of the song", () => {

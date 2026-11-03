@@ -5,7 +5,7 @@
 ```
 AppState
 ├─ project (persisted)
-│  ├─ projectName, bpm, swing, pattern (current), chain[], chainOn
+│  ├─ projectName, bpm, swing, pattern (current), chain[] ({pattern, repeats, label?}), chainOn
 │  ├─ rig[8][2]: { engine, variant } per slot       which engine is in each slot (project-wide, not per pattern)
 │  ├─ scale: { root, scale, preset }
 │  ├─ mixMode: "song" | "perform"        where faders, mutes and solos live
@@ -29,7 +29,7 @@ AppState
 │       └─ mangler: { sweep, param[] }   sweep-in time and character knob per punch
 └─ performance (not persisted)
    library, slot, mutes, solos (PERFORM mode's), focus, page, selStep, follow, tab, seqView, write, erase, rec, plock, punch, punchSel,
-   chainEdit, copyArm, audio, audioError, playing, hostBpm, playPattern, chainPos, cue, fxPlay, keyHighlight, storageBlocked
+   chainEdit, chainSel, copyArm, audio, audioError, playing, hostBpm, playPattern, chainPos, cue, fxPlay, keyHighlight, storageBlocked
 ```
 
 All 64 patterns always exist in memory (`NUM_PATTERNS`). Every pattern holds 64 steps for every track regardless of

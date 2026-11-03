@@ -5,7 +5,8 @@ import { FILE_EXT, PRODUCT } from "../product";
 import { sanitizeLocks } from "./plock";
 import { normalizeRig, trackProfile, SLOT_KNOBS, type Rig } from "./catalogue";
 import { NUM_TRACKS } from "./spec";
-import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_CHAIN, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type MixMode, type Pattern } from "./state";
+import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type ChainEntry, type MixMode, type Pattern } from "./state";
+import { normalizeChain } from "./song";
 import { normalizeArp, type ArpSettings } from "./arp";
 import { defaultMangler } from "./mangler";
 import { newLfos, sanitizeLfos } from "./lfo";
@@ -23,7 +24,8 @@ interface Saved {
   rig?: unknown;
   /** `null` stands for an untouched pattern (see `sparse`); older files hold only 16 entries. */
   patterns: Array<Pattern | null>;
-  chain: number[];
+  /** Entries with repeats; saves from before repeats hold one pattern index per pass (`normalizeChain`). */
+  chain: ReadonlyArray<ChainEntry | number>;
   chainOn: boolean;
   bpm: number;
   swing: number;
@@ -38,7 +40,7 @@ interface Saved {
 }
 
 /** A parsed project: `Saved` with the pieces that were cleaned. */
-type Project = Omit<Saved, "rig" | "patterns" | "mixMode" | "perfLevels"> & { rig: Rig; patterns: Pattern[]; mixMode: MixMode; perfLevels: number[] };
+type Project = Omit<Saved, "rig" | "patterns" | "mixMode" | "perfLevels" | "chain"> & { chain: ChainEntry[]; rig: Rig; patterns: Pattern[]; mixMode: MixMode; perfLevels: number[] };
 
 function valid(p: unknown): p is Pattern {
   const x = p as Pattern;
@@ -97,7 +99,7 @@ function parseProject(s: Saved): Project | null {
     projectName: typeof s.projectName === "string" ? s.projectName.slice(0, 40) : "",
     rig,
     patterns,
-    chain: Array.isArray(s.chain) ? s.chain.filter((n) => n >= 0 && n < NUM_PATTERNS).slice(0, MAX_CHAIN) : [],
+    chain: normalizeChain(s.chain),
     chainOn: !!s.chainOn,
     bpm: Number.isFinite(s.bpm) ? s.bpm : 128,
     swing: Number.isFinite(s.swing) ? s.swing : 0.5,
@@ -256,7 +258,7 @@ function projectText(name: string, compact = false): string {
   const { rig } = getState();
   const sparsed = sparse(getState().patterns, rig);
   const patterns = compact ? sparsed.map((p) => compactPattern(p, rig)) : sparsed;
-  return JSON.stringify({ app: FILE_APP, version: 1, name, project: { ...snapshot(), patterns } });
+  return JSON.stringify({ app: FILE_APP, version: 2, name, project: { ...snapshot(), patterns } });
 }
 
 /** Whether export / import must go through the host's own dialogs: a plugin's WKWebView has no file input and ignores
@@ -329,9 +331,9 @@ const projectChanged = (next: AppState, prev: AppState) => {
 
 export const HOST_APP = FILE_APP;
 /** Version of a snapshot's `data` (the export file's JSON). Bump when older code could no longer read it. */
-export const HOST_FORMAT = 2;
-/** Formats this code reads: 1 was the export file's JSON as it is; 2 drops each track's trailing blank steps (`compactPattern`). */
-const HOST_FORMATS_READ = [1, 2];
+export const HOST_FORMAT = 3;
+/** Formats this code reads: 1 was the export file's JSON as it is; 2 drops each track's trailing blank steps (`compactPattern`); 3 holds the chain as entries with repeats (older formats are read by `normalizeChain`). */
+const HOST_FORMATS_READ = [1, 2, 3];
 export const HOST_PUBLISH_DEBOUNCE_MS = 300;
 /** An older plugin never answers: give up waiting after this long and run on the default project. */
 export const HOST_ANSWER_TIMEOUT_MS = 2500;

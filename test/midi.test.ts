@@ -12,6 +12,8 @@ import {
 } from "../src/midi/control";
 import { midiMapping } from "../src/midi/mapping";
 
+const ch = (...ps: number[]) => ps.map((pattern) => ({ pattern, repeats: 1 }));
+
 const bus: ParamBus = {
   describe: (id) => paramInfo(id),
   get: (id) => getParam(id, getState()),
@@ -316,20 +318,20 @@ describe("song position", () => {
   it("walks the chain by pattern length", () => {
     const s = initialState();
     s.patterns[2].length = 32;
-    const c = { ...s, chainOn: true, chain: [0, 2, 1] };
+    const c = { ...s, chainOn: true, chain: ch(0, 2, 1) };
     expect(locateSong(c, 0)).toEqual({ pattern: 0, chainPos: 0, step: 0, run: 0 });
     expect(locateSong(c, 20)).toEqual({ pattern: 2, chainPos: 1, step: 4, run: 4 });
     expect(locateSong(c, 16 + 32 + 3)).toEqual({ pattern: 1, chainPos: 2, step: 3, run: 3 });
     expect(locateSong(c, 64 + 1)).toEqual({ pattern: 0, chainPos: 0, step: 1, run: 1 });
   });
   it("a run carries on through repeats of one pattern and starts again when the pattern changes", () => {
-    const c = { ...initialState(), chainOn: true, chain: [0, 0, 1, 0] };
+    const c = { ...initialState(), chainOn: true, chain: ch(0, 0, 1, 0) };
     expect(locateSong(c, 16 + 5)).toMatchObject({ chainPos: 1, step: 5, run: 21 });
     expect(locateSong(c, 32 + 5)).toMatchObject({ chainPos: 2, step: 5, run: 5 });
     expect(locateSong(c, 48 + 5)).toMatchObject({ chainPos: 3, step: 5, run: 5 });
   });
   it("one pattern repeated in a chain is that pattern looping: the run never restarts", () => {
-    const c = { ...initialState(), chainOn: true, chain: [0, 0, 0] };
+    const c = { ...initialState(), chainOn: true, chain: ch(0, 0, 0) };
     expect(locateSong(c, 16 * 3 + 2)).toMatchObject({ chainPos: 0, step: 2, run: 50 });
   });
   it("runStarts: where each entry's run began", () => {

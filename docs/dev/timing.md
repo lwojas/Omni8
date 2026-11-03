@@ -49,8 +49,9 @@ cycle, so a shorter track just wraps inside it (counting from where its run bega
 
 At the wrap, `advancePattern`:
 
-- a **cue** wins: switch to the cued pattern. If the chain is on and contains it, the chain position follows.
-- otherwise, with the **chain on**, step to the next chain entry (wrapping).
+- a **cue** wins: switch to the cued pattern. If the chain is on and contains it, the chain position follows (its first pass).
+- otherwise, with the **chain on**, step to the next *pass* of the chain (wrapping). A chain entry plays its pattern `repeats` times, so the scheduler
+  walks `chainPasses(chain)`, the entries expanded one pattern per pass; `chainPos` is the index of the pass and `passAt` gives its entry and repeat.
 - otherwise stay.
 
 On a change, `applySound(next, time)` schedules every changed instrument parameter at the boundary, and the mix and punch

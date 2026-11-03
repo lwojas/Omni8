@@ -10,12 +10,12 @@ import { trackProfile } from "./catalogue";
 import { NUM_TRACKS } from "./spec";
 import { encodeWav, resampleName, resampleSeconds } from "./resample";
 import { importSample } from "./samples";
-import { MAX_CHAIN, muteOf, PAGE, pickWriteLane, soloOf, trackStepAt, type Pattern } from "./state";
+import { muteOf, PAGE, pickWriteLane, soloOf, trackStepAt, type Pattern } from "./state";
 import { StepCompiler, type StepNote } from "./stepcompile";
 import { clearLit, flashKey, setLit } from "./keyhl";
 import { setAudible } from "./playhead";
 import { gateForHeld, recordStep } from "./record";
-import { isOnePattern, locateSong } from "./song";
+import { chainAdd, chainPasses, chainPattern, isOnePattern, locateSong } from "./song";
 import { withSource } from "./source";
 import { startTicker } from "./ticker";
 
@@ -143,7 +143,7 @@ class Controller {
     if (!gb || st.playing) return; // (while a plugin host plays, `playing` is true: the DAW owns the transport)
     const at = from ? locateSong(st, from.songStep) : { pattern: st.pattern, chainPos: 0, step: 0, run: 0 };
     let idx = at.pattern;
-    if (!from && st.chainOn && st.chain.length) idx = st.chain[0];
+    if (!from && st.chainOn && st.chain.length) idx = st.chain[0].pattern;
     this.chainPos = at.chainPos;
     this.schedPattern = idx;
     this.step = at.step;
@@ -436,7 +436,7 @@ class Controller {
   selectPattern(i: number): void {
     const st = getState();
     if (st.chainEdit) {
-      if (st.chain.length < MAX_CHAIN) setState({ chain: [...st.chain, i] });
+      setState({ chain: st.chainSel >= 0 ? chainPattern(st.chain, st.chainSel, i) : chainAdd(st.chain, i) });
       return;
     }
     if (st.copyArm) {
@@ -706,16 +706,16 @@ class Controller {
     let next = this.schedPattern;
     // The run of tracks shorter than the pattern carries on while the pattern stays the same (a looping pattern, repeats in a chain) and starts
     // again when the pattern changes, or when a chain of other patterns starts over. This is what the host's layout says (nativeseq.ts).
-    const chained = st.chainOn && st.chain.length > 0;
+    const passes = st.chainOn ? chainPasses(st.chain) : [];
     let wrapped = false;
     if (st.cue !== null) {
       next = st.cue;
-      const ix = st.chainOn ? st.chain.indexOf(next) : -1;
+      const ix = passes.indexOf(next);
       if (ix >= 0) this.chainPos = ix;
-    } else if (chained) {
-      this.chainPos = (this.chainPos + 1) % st.chain.length;
-      wrapped = this.chainPos === 0 && !isOnePattern(st.chain);
-      next = st.chain[this.chainPos];
+    } else if (passes.length) {
+      this.chainPos = (this.chainPos + 1) % passes.length;
+      wrapped = this.chainPos === 0 && !isOnePattern(passes);
+      next = passes[this.chainPos];
     }
     this.run = next === this.schedPattern && !wrapped ? this.run : 0;
     if (next === this.schedPattern) return;

@@ -33,8 +33,8 @@ import { StepCompiler, type StepNote } from "./stepcompile";
 import type { Rig } from "./catalogue";
 import { playSlots, type SlotSounds } from "./slots";
 import type { ArpSettings } from "./arp";
-import { isOnePattern, runStarts } from "./song";
-import { trackLast, trackStepAt, type Pattern } from "./state";
+import { chainPasses, isOnePattern, runStarts } from "./song";
+import { trackLast, trackStepAt, type ChainEntry, type Pattern } from "./state";
 
 /** The tempo the compile runs at: 120 bpm makes a second exactly two quarter notes. */
 const REF_STEP_SECONDS = 15 / 120;
@@ -110,8 +110,8 @@ function repeated(layout: Layout): number | null {
 export const cycleBeats = (patterns: readonly Pattern[], layout: Layout): number => entriesOf({ patterns }, layout).cycle;
 
 /** The layout a stopped transport would start from: the chain when it is on, otherwise the selected pattern looping. */
-export function baseLayout(s: { chainOn: boolean; chain: readonly number[]; pattern: number }): Layout {
-  return { patterns: s.chainOn && s.chain.length ? [...s.chain] : [s.pattern], origin: 0 };
+export function baseLayout(s: { chainOn: boolean; chain: readonly ChainEntry[]; pattern: number }): Layout {
+  return { patterns: s.chainOn && s.chain.length ? chainPasses(s.chain) : [s.pattern], origin: 0 };
 }
 
 export interface SongPos {
@@ -152,8 +152,9 @@ export function nextBoundary(patterns: readonly Pattern[], layout: Layout, min: 
 }
 
 /** The layout after cueing `cued` at `boundary`: the chain from the cued pattern's place in it, or the pattern alone. */
-export function cueLayout(patterns: readonly Pattern[], chainOn: boolean, chain: readonly number[], cued: number, boundary: number): Layout {
-  if (chainOn && chain.length) {
+export function cueLayout(patterns: readonly Pattern[], chainOn: boolean, entries: readonly ChainEntry[], cued: number, boundary: number): Layout {
+  if (chainOn && entries.length) {
+    const chain = chainPasses(entries);
     const ix = chain.indexOf(cued);
     // one pattern over and over is that pattern looping: its run starts at the cue, so the layout does too
     if (ix >= 0 && !isOnePattern(chain)) {

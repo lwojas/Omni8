@@ -4,6 +4,7 @@ import { normalizeArp, type ArpSettings } from "./arp";
 import { controller } from "./controller";
 import { defaultSlotSound, defaultVariant, DRUM_VOICE_KEYS, SAMPLE_CONTROLS, SYNTH_VOICE_KEYS, trackProfile, voiceOf, type EngineId, type Rig, type SlotRig } from "./catalogue";
 import type { Lfo } from "./lfo";
+import { chainLabel, chainMove, chainRemove, chainRepeats } from "./song";
 import { clearLocks, lockParam, setLock, soundParam } from "./plock";
 import { importSample, loadUserSamples, removeUserSample, FACTORY_SAMPLES } from "./samples";
 import { clearTrackSteps, GATES, muteOf, newPattern, PAGE, randomizeTrack, soloOf, type MixMode, type Pattern } from "./state";
@@ -371,11 +372,28 @@ export function clearPattern(): void {
 // --- chain ---------------------------------------------------------------------------------------
 
 export function removeChainEntry(index: number): void {
-  setState((s) => ({ chain: s.chain.filter((_, i) => i !== index) }));
+  setState((s) => ({ chain: chainRemove(s.chain, index), chainSel: -1 }));
+}
+
+/** Select an entry to edit (a tap on the selected one lets go of it). */
+export function selectChainEntry(index: number): void {
+  setState((s) => ({ chainSel: s.chainSel === index ? -1 : index }));
+}
+
+export function moveChainEntry(index: number, dir: -1 | 1): void {
+  setState((s) => ({ chain: chainMove(s.chain, index, dir), chainSel: s.chain[index + dir] ? index + dir : s.chainSel }));
+}
+
+export function setChainRepeats(index: number, repeats: number): void {
+  setState((s) => ({ chain: chainRepeats(s.chain, index, repeats) }));
+}
+
+export function setChainLabel(index: number, label: string): void {
+  setState((s) => ({ chain: chainLabel(s.chain, index, label) }));
 }
 
 export function clearChain(): void {
-  setState({ chain: [], chainOn: false });
+  setState({ chain: [], chainOn: false, chainSel: -1 });
 }
 
 // --- the shared sample library ---------------------------------------------------------------------

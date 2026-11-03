@@ -141,7 +141,7 @@ describe.skipIf(!available)("Hybrid.8 in the plugin (headless end to end)", () =
     const a = pattern(0, [0, 4, 8, 12]);
     const b = pattern(0, [0, 8]);
     b.tracks[0].level = 0.4; // quieter: its fader is written at its start
-    load({ 0: a, 1: b }, { chainOn: true, chain: [0, 1] });
+    load({ 0: a, 1: b }, { chainOn: true, chain: [{ pattern: 0, repeats: 1 }, { pattern: 1, repeats: 1 }] });
     await rig.wait(0.3);
     await play(0);
     await rig.until(8.2);
