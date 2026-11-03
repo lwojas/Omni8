@@ -8,14 +8,16 @@ AppState
 │  ├─ projectName, bpm, swing, pattern (current), chain[], chainOn
 │  ├─ rig[8][2]: { engine, variant } per slot       which engine is in each slot (project-wide, not per pattern)
 │  ├─ scale: { root, scale, preset }
+│  ├─ mixMode: "song" | "perform"        where faders, mutes and solos live
+│  ├─ perfLevels[8]                      the faders in PERFORM mode
 │  ├─ arp[8]: ArpSettings per track
 │  └─ patterns[64]: Pattern
 │       ├─ length (16 | 32 | 48 | 64)
 │       ├─ tracks[8]: TrackPattern
 │       │    ├─ steps[64]: { on, note, acc, slide, gate?, parameterLocks? }
 │       │    ├─ slots[2][SLOT_KNOBS]   normalised 0..1: engine knobs 0-5, LEVEL at index 6 (catalogue.ts)
-│       │    ├─ level, oct
-│       │    ├─ dly: { send, mode, time, div }     rev: { send, size }
+│       │    ├─ level, oct, mute?, solo?      mixer state in SONG mode (absent = off)
+│       │    ├─ dly: { send, mode, time, div, fb? }     rev: { send, size }
 │       │    ├─ dist        distortion insert (a track with a synth), 0 = off
 │       │    ├─ filter: { mode, cut, res }         LP/HP insert (every other track)
 │       │    ├─ lfos[3]: { on, target, wave, sync, rate, div, depth }
@@ -26,7 +28,7 @@ AppState
 │       │    └─ fxLvl[64]  sweep level 0..1 at the start of each step
 │       └─ mangler: { sweep, param[] }   sweep-in time and character knob per punch
 └─ performance (not persisted)
-   library, slot, mutes, solos, focus, page, selStep, follow, tab, seqView, write, erase, rec, plock, punch, punchSel,
+   library, slot, mutes, solos (PERFORM mode's), focus, page, selStep, follow, tab, seqView, write, erase, rec, plock, punch, punchSel,
    chainEdit, copyArm, audio, audioError, playing, hostBpm, playPattern, chainPos, cue, fxPlay, keyHighlight, storageBlocked
 ```
 

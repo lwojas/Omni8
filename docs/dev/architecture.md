@@ -137,7 +137,7 @@ in the graph changes.
 - **Controls are stored normalised (0..1).** Ranges are tuned in `catalogue.ts`; saved patterns survive retuning.
 - **Ranges are narrower than the engine's, on purpose.** The whole knob travel should sound good.
 - **Sound belongs to the pattern; the rig belongs to the project.** Pattern switching is a state change the audio layer applies at the loop boundary.
-- **Performance state is not saved.** Mute, solo, arming (REC, REC FX, ERASE) and the visible screen are not in `Saved`.
+- **Performance state is not saved.** PERFORM-mode mute and solo, arming (REC, REC FX, ERASE) and the visible screen are not in `Saved`. The mix mode (`mixMode`, SONG or PERFORM), the PERFORM faders (`perfLevels`) and each pattern's `mute` / `solo` are: `levelOf`, `muteOf` and `soloOf` (state.ts) say which set applies.
 - **Caches everywhere on the audio side.** `Groovebox` remembers the last value it sent for every parameter and sends
   only changes.
 - **Ids and saved positions are permanent.** Parameter ids, lock ids, punch ids, gate indexes, arp rate indexes and engine ids
