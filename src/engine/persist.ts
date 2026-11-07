@@ -8,7 +8,7 @@ import { NUM_TRACKS } from "./spec";
 import { DEFAULT_RIG, emptyStep, FX_LANES, MAX_STEPS, newPattern, NUM_PATTERNS, type AppState, type ChainEntry, type MixMode, type Pattern } from "./state";
 import { normalizeChain } from "./song";
 import { normalizeArp, type ArpSettings } from "./arp";
-import { defaultMangler } from "./mangler";
+import { defaultMangler, fillMangler } from "./mangler";
 import { newLfos, sanitizeLfos } from "./lfo";
 import { breakLoops, sanitizeSidechain } from "./sidechain";
 import { BEAT_DIVISIONS, filterOpen, newDelay, newDist, newFilter, newReverb } from "./trackfx";
@@ -78,6 +78,8 @@ function normalize(p: Pattern): void {
   });
   breakLoops(p.tracks);
   if (!Array.isArray(p.mangler?.param)) p.mangler = defaultMangler();
+  // Older saves have no macros or FX LFOs; a punch added since has none of either
+  fillMangler(p.mangler);
 }
 
 /** Validates and normalises a saved project (any age); null if it is not a usable project. */

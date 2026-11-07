@@ -2240,7 +2240,7 @@ select.chip.variant {
   }
   .mangler .knobs {
     grid-area: knobs;
-    grid-template-columns: repeat(1, 76px);
+    grid-template-columns: repeat(3, 62px);
     margin: 0;
     align-self: center;
   }
@@ -2359,7 +2359,7 @@ select.chip.variant {
   }
   .mangler .knobs {
     --ks: 40px;
-    grid-template-columns: repeat(1, 66px);
+    grid-template-columns: repeat(3, 56px);
   }
   .band .panel-title {
     margin-bottom: 8px;
@@ -2446,7 +2446,7 @@ select.chip.variant {
     row-gap: 8px;
   }
   .mangler .knobs {
-    grid-template-columns: repeat(1, 60px);
+    grid-template-columns: repeat(3, 54px);
   }
   .mangler .chips {
     flex-wrap: wrap;
@@ -2485,7 +2485,7 @@ select.chip.variant {
   }
   .mangler .knobs {
     --ks: 36px;
-    grid-template-columns: repeat(1, 56px);
+    grid-template-columns: repeat(3, 48px);
   }
   .mangler .chip,
   .mangler .write-controls .btn {

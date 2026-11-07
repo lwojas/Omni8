@@ -56,6 +56,8 @@ One channel per track (track 1 → channel 1 … track 8 → channel 8), the sam
 | 78 | filter mode (0-63 LP, 64-127 HP) | 14 / 15 | slot A / slot B LEVEL (knob 7) |
 | 70 72 73 75 76 79 | slot A knobs 1-6 | 102–107 | slot B knobs 1-6 |
 
+Punch FX macros: `punch.<key>.macro1|macro2` (keys in `PUNCHES`, `engine/mangler.ts`), channel 9, CC 102-119 in catalogue order. They read and write the pattern's `mangler.macro`, like the knobs. The FX LFO has no parameter or CC.
+
 Stepped knobs (FM COLOR, a sample's PLAY) split 0-127 into equal bands. CC 10 is unassigned: the app has no pan. 71, 74 and 78 follow
 the filter in the author's efem synth, which is why the slot knobs skip them.
 

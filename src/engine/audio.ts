@@ -389,6 +389,11 @@ export class Groovebox {
     runtime.onVoiceEnded((voice) => { for (const set of this.loops.values()) set.delete(voice); });
   }
 
+  /** The beat grid an LFO follows (the anchor and tempo as last sent to the engine). */
+  get beatGrid(): { anchorTime: number; bpm: number } {
+    return { anchorTime: this.gridAnchor, bpm: this.bpm };
+  }
+
   /** `value` kept inside the effect parameter's range. */
   clampFx = (param: number, value: number): number => {
     const range = this.effectRange.get(param);

@@ -17,12 +17,18 @@
 //   CC  77  distortion (INSERT FX of a track with a synth)
 //   CC  74  filter cutoff, 71 resonance, 78 mode (64+ = high-pass): INSERT FX of the other tracks, as in efem
 //
+// Punch FX macros: channel 9 (the one after the tracks), CC 102-119 in catalogue order, macro 1 then macro 2 of each pad
+// (FILTER 102/103, DRIVE 104/105 ... VERB 118/119). 102-119 are undefined in the MIDI spec.
+//
 // There is no pan: the app has none. CC 10 is left free for it.
+import { PUNCHES } from "../engine/mangler";
 import { NUM_TRACKS } from "../engine/spec";
 import type { MidiMapping } from "./control";
 
 const TRACK_COUNT = NUM_TRACKS;
 /** CC of each of a slot's 7 knobs, by position: six engine knobs, LEVEL. (71, 74 and 78 are the filter's, as in efem.) */
+/** First CC of the Punch FX macros. */
+const PUNCH_CC = 102;
 const SLOT_CCS = [
   [70, 72, 73, 75, 76, 79, 14],
   [102, 103, 104, 105, 106, 107, 15],
@@ -47,6 +53,11 @@ function build(): MidiMapping["parameters"] {
       SLOT_CCS[s].forEach((cc, k) => { parameters[id(`${slot}.${k + 1}`)] = { cc, channel }; });
     });
   }
+  // the Punch FX macros live on their own channel, after the tracks
+  PUNCHES.forEach((punch, i) => {
+    parameters[`punch.${punch.key}.macro1`] = { cc: PUNCH_CC + i * 2, channel: TRACK_COUNT + 1 };
+    parameters[`punch.${punch.key}.macro2`] = { cc: PUNCH_CC + i * 2 + 1, channel: TRACK_COUNT + 1 };
+  });
   return parameters;
 }
 
