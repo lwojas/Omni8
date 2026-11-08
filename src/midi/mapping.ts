@@ -26,9 +26,9 @@ import { NUM_TRACKS } from "../engine/spec";
 import type { MidiMapping } from "./control";
 
 const TRACK_COUNT = NUM_TRACKS;
-/** CC of each of a slot's 7 knobs, by position: six engine knobs, LEVEL. (71, 74 and 78 are the filter's, as in efem.) */
 /** First CC of the Punch FX macros. */
 const PUNCH_CC = 102;
+/** CC of each of a slot's 7 knobs, by position: six engine knobs, LEVEL. (71, 74 and 78 are the filter's, as in efem.) */
 const SLOT_CCS = [
   [70, 72, 73, 75, 76, 79, 14],
   [102, 103, 104, 105, 106, 107, 15],
